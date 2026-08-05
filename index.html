@@ -697,8 +697,9 @@ function cloudInit(){
   return new Promise(function(res){
     try{
       if(typeof cloudbase==='undefined'){ res(false); return; }
-      // IIFE bundle exposes default export as `cloudbase` function; npm uses cloudbase.init()
-      var initFn = (typeof cloudbase.init==='function') ? cloudbase.init : cloudbase;
+      // IIFE bundle may expose {default: init} or init directly; npm uses cloudbase.init()
+      var raw = (cloudbase && typeof cloudbase==='object' && cloudbase.default) ? cloudbase.default : cloudbase;
+      var initFn = (typeof raw.init==='function') ? raw.init : raw;
       var app = initFn({ env: CLOUD.env });
       CLOUD.app = app; CLOUD.db = app.database();
       CLOUD.ready = true; res(true);
@@ -756,9 +757,12 @@ function cloudPull(){
 function bootCloud(){
   var tries = 0;
   function wait(){
-    if(typeof cloudbase!=='undefined' && cloudbase && (typeof cloudbase.init==='function' || typeof cloudbase==='function')){
-      cloudInit().then(function(ok){ if(ok){ cloudPull(); } });
-      return;
+    if(typeof cloudbase!=='undefined' && cloudbase){
+      var r = (typeof cloudbase==='object' && cloudbase.default) ? cloudbase.default : cloudbase;
+      if(typeof r.init==='function' || typeof r==='function'){
+        cloudInit().then(function(ok){ if(ok){ cloudPull(); } });
+        return;
+      }
     }
     if(tries++ < 60){ setTimeout(wait, 100); }
   }

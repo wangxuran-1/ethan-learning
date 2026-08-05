@@ -685,12 +685,10 @@ const KEY = 'ethan_learning_v1';
 // ===== 云端同步（腾讯云 CloudBase）=====
 var CLOUD = {
   env: 'ethan-learning2026-d0c41ee5f0d46', appid: '1257058645',
-  passHash: '5c59386',
   coll: 'ethan_state',
   docId: 'ethan_shared',
   ready: false, app: null, db: null
 };
-var _passEntered = null;
 var _pushTimer = null;
 var _localWarned = false;
 function _syncBadge(state){
@@ -703,12 +701,11 @@ function _syncBadge(state){
       (document.body||document.documentElement).appendChild(b);
     }
     if(state==='ok'){ b.textContent='☁️ 已同步'; b.style.background='#2ecc71'; b.style.color='#fff'; }
-    else if(state==='local'){ b.textContent='📱 仅本机'; b.style.background='#f39c12'; b.style.color='#fff'; }
+    else if(state==='local'){ b.textContent='📱 本机(未连云)'; b.style.background='#f39c12'; b.style.color='#fff'; }
     else if(state==='err'){ b.textContent='☁️ 同步失败'; b.style.background='#e74c3c'; b.style.color='#fff'; }
     else if(state==='wait'){ b.textContent='☁️ 同步中…'; b.style.background='#3498db'; b.style.color='#fff'; }
   }catch(e){}
 }
-function _ph(s){ var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))>>>0; } return h.toString(16); }
 function cloudInit(){
   return new Promise(function(res){
     try{
@@ -722,36 +719,8 @@ function cloudInit(){
     }catch(e){ res(false); }
   });
 }
-function askPass(){
-  return new Promise(function(resolve){
-    var saved = null;
-    try{ saved = localStorage.getItem('ethan_cloud_pass'); }catch(e){}
-    if(saved === CLOUD.passHash){ _passEntered = saved; resolve(saved); return; }
-    if(_passEntered){ resolve(_passEntered); return; }
-    popBox('<div style="font-weight:600;margin-bottom:6px">🔐 云端同步口令</div><div style="color:#888;font-size:13px;margin-bottom:8px">输入口令即可把学习记录同步到云端，任何设备输入同一口令都能查看。</div><input id="cpass" type="password" placeholder="请输入口令" style="width:100%;padding:10px;border:2px solid var(--line);border-radius:8px;box-sizing:border-box"><div class="opts"><button data-ok>确定</button></div>',
-      function(){
-        var inp = document.getElementById('cpass');
-        var v = inp ? inp.value : '';
-        if(_ph(v) === CLOUD.passHash){
-          _passEntered = v;
-          try{ localStorage.setItem('ethan_cloud_pass', CLOUD.passHash); }catch(e){}
-          resolve(v);
-        } else { toast('口令错误'); resolve(null); }
-        return true;
-      });
-  });
-}
 function cloudPush(){
   if(!CLOUD.ready){
-    if(_syncBadge) _syncBadge('local');
-    return;
-  }
-  // 口令已在本机保存过则自动复用，避免“启动时关掉口令框导致永远不同步”
-  if(!_passEntered){
-    try{ var sp = localStorage.getItem('ethan_cloud_pass'); if(sp === CLOUD.passHash) _passEntered = sp; }catch(e){}
-  }
-  if(!_passEntered){
-    if(!_localWarned){ _localWarned = true; toast('未设置云端口令，数据仅保存在本机'); }
     if(_syncBadge) _syncBadge('local');
     return;
   }
@@ -760,7 +729,7 @@ function cloudPush(){
   _pushTimer = setTimeout(function(){
     try{
       S.ts = Date.now();
-      CLOUD.db.collection(CLOUD.coll).doc(CLOUD.docId).set({ data: S, ts: S.ts, pass: _ph(_passEntered) })
+      CLOUD.db.collection(CLOUD.coll).doc(CLOUD.docId).set({ data: S, ts: S.ts })
         .then(function(){ if(_syncBadge) _syncBadge('ok'); })
         .catch(function(){ if(_syncBadge) _syncBadge('err'); });
       try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
@@ -769,22 +738,19 @@ function cloudPush(){
 }
 function cloudPull(){
   if(!CLOUD.ready) return Promise.resolve();
-  return askPass().then(function(p){
-    if(!p) return;
-    return CLOUD.db.collection(CLOUD.coll).doc(CLOUD.docId).get().then(function(r){
-      var d = r && r.data && r.data[0];
-      if(d && d.data){
-        var localTs = (S && S.ts) ? S.ts : 0;
-        if((d.ts||0) >= localTs){
-          S = d.data;
-          try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
-          if(typeof renderHome==='function') renderHome();
-          if(_syncBadge) _syncBadge('ok');
-          toast('已从云端同步');
-        }
+  return CLOUD.db.collection(CLOUD.coll).doc(CLOUD.docId).get().then(function(r){
+    var rec = (r && r.data && r.data[0]) ? r.data[0] : null;
+    if(rec && rec.data){
+      var localTs = (S && S.ts) ? S.ts : 0;
+      if((rec.ts||0) >= localTs){
+        S = rec.data;
+        try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+        if(typeof renderHome==='function') renderHome();
+        if(_syncBadge) _syncBadge('ok');
+        toast('已从云端同步');
       }
-    }).catch(function(){});
-  });
+    }
+  }).catch(function(){});
 }
 function bootCloud(){
   var tries = 0;

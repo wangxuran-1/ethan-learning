@@ -2707,7 +2707,7 @@ function buildDayDetailHTML(k){
   });
   // 🎯 复习闯关
   const reviewRows=[];
-  const quizSet=[...new Set(st.items.filter(x=>(x.r||'').indexOf('复习闯关·')===0).map(x=> x.r.replace('复习闯关·','')))];
+  const quizSet=[...new Set(st.items.filter(x=>{ const r=x.r||''; return r.indexOf('复习闯关·')===0 || r.indexOf('闯关·')===0; }).map(x=> (x.r||'').replace('复习闯关·','').replace('闯关·','')))];
   quizSet.forEach(b=>{ const nm='复习闯关·'+(BOARD[b]||b); reviewRows.push(taskRow(nm, true, sum[nm]||0)); });
   // 🌈 生活好习惯
   const habitRows=[];

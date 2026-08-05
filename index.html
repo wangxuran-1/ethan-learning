@@ -2894,6 +2894,8 @@ function openExchange(editIdx){
     +'<input id="exchName" type="text" placeholder="例如：乐高积木" style="width:100%;padding:10px;border:2px solid var(--line);border-radius:12px;font-size:16px;box-sizing:border-box">'
     +'<label style="display:block;font-size:14px;font-weight:700;margin:8px 0 4px">兑换积分</label>'
     +'<input id="exchPts" type="number" min="1" placeholder="需要多少积分" oninput="exchToggleBtns()" style="width:100%;padding:10px;border:2px solid var(--line);border-radius:12px;font-size:16px;box-sizing:border-box">'
+    +'<label style="display:block;font-size:14px;font-weight:700;margin:8px 0 4px">兑换日期</label>'
+    +'<input id="exchDate" type="date" style="width:100%;padding:10px;border:2px solid var(--line);border-radius:12px;font-size:16px;box-sizing:border-box">'
     +'<label style="display:block;font-size:14px;font-weight:700;margin:8px 0 4px">玩具图片（可选）</label>'
     +'<input id="exchImg" type="file" accept="image/*" onchange="previewExchImg(this)" style="width:100%;padding:6px;border:2px solid var(--line);border-radius:10px;font-size:14px;box-sizing:border-box">'
     +'<div id="exchImgPreview" style="margin-top:8px;text-align:center;display:none"><img id="exchPreviewImg" style="max-width:200px;max-height:160px;border-radius:12px;border:2px solid var(--line)"></div>'
@@ -2908,13 +2910,14 @@ function openExchange(editIdx){
       const delta=oldPts-pts; // 新分更少→剩余+delta；更多→剩余-delta
       if(-delta > S.points){ toast('积分不足！当前只有 '+S.points+' 分'); return false; }
       S.points=Math.max(0, S.points+delta);
-      S.rewardLog[editIdx]={name:name, pts:pts, date:old.date, img:exchImgData||''};
+      S.rewardLog[editIdx]={name:name, pts:pts, date:($('exchDate').value||old.date), img:exchImgData||''};
       save(); renderRewards(); bumpPts(2); renderHome(); syncSidebar(); closePop();
       toast('✅ 已修改：'+name);
     } : null
   );
   // 预填（编辑模式）
-  if(rec){ const n=$('exchName'); if(n) n.value=rec.name||''; const p=$('exchPts'); if(p) p.value=(rec.pts!=null?rec.pts:''); }
+  if(rec){ const n=$('exchName'); if(n) n.value=rec.name||''; const p=$('exchPts'); if(p) p.value=(rec.pts!=null?rec.pts:''); const dt=$('exchDate'); if(dt) dt.value=(rec.date||today()); }
+  else { const dt=$('exchDate'); if(dt) dt.value=today(); }
   if(exchImgData){ const pr=$('exchImgPreview'); const im=$('exchPreviewImg'); if(pr&&im){ im.src=exchImgData; pr.style.display='block'; } }
   exchToggleBtns();
 }
@@ -2928,7 +2931,7 @@ function exchConfirm(){
   if(!pts || pts<=0){ toast('请输入有效积分'); return; }
   if(pts > S.points){ toast('积分不足！当前只有 '+S.points+' 分'); return; }
   S.points -= pts;
-  S.rewardLog.push({name:name, pts:pts, date:today(), img:exchImgData||''});
+  S.rewardLog.push({name:name, pts:pts, date:($('exchDate').value||today()), img:exchImgData||''});
   save(); renderRewards(); bumpPts(2); renderHome(); syncSidebar(); closePop();
   toast('🎁 兑换成功：'+name+'（-'+pts+'分）');
 }
@@ -2939,7 +2942,7 @@ function exchAddWish(){
   if(!name){ toast('请输入玩具名称'); return; }
   if(!pts || pts<=0){ toast('请输入有效积分'); return; }
   if(!S.wishlist) S.wishlist=[];
-  S.wishlist.push({name:name, pts:pts, date:today(), img:exchImgData||''});
+  S.wishlist.push({name:name, pts:pts, date:($('exchDate').value||today()), img:exchImgData||''});
   save(); renderRewards(); closePop();
   toast('🎯 已加入心愿单：'+name+'（还差 '+(pts-Math.max(0,S.points))+' 分就能换）');
 }
@@ -3032,6 +3035,8 @@ function openWishEdit(idx){
     +'<input id="exchName" type="text" placeholder="例如：乐高积木" style="width:100%;padding:10px;border:2px solid var(--line);border-radius:12px;font-size:16px;box-sizing:border-box">'
     +'<label style="display:block;font-size:14px;font-weight:700;margin:8px 0 4px">兑换积分</label>'
     +'<input id="exchPts" type="number" min="1" placeholder="需要多少积分" style="width:100%;padding:10px;border:2px solid var(--line);border-radius:12px;font-size:16px;box-sizing:border-box">'
+    +'<label style="display:block;font-size:14px;font-weight:700;margin:8px 0 4px">兑换日期</label>'
+    +'<input id="exchDate" type="date" style="width:100%;padding:10px;border:2px solid var(--line);border-radius:12px;font-size:16px;box-sizing:border-box">'
     +'<label style="display:block;font-size:14px;font-weight:700;margin:8px 0 4px">玩具图片（可选）</label>'
     +'<input id="exchImg" type="file" accept="image/*" onchange="previewExchImg(this)" style="width:100%;padding:6px;border:2px solid var(--line);border-radius:10px;font-size:14px;box-sizing:border-box">'
     +'<div id="exchImgPreview" style="margin-top:8px;text-align:center;display:none"><img id="exchPreviewImg" style="max-width:200px;max-height:160px;border-radius:12px;border:2px solid var(--line)"></div>'
@@ -3044,13 +3049,14 @@ function openWishEdit(idx){
       const pts=parseInt($('exchPts').value);
       if(!name){ toast('请输入玩具名称'); return false; }
       if(!pts || pts<=0){ toast('请输入有效积分'); return false; }
-      S.wishlist[idx]={name:name, pts:pts, date:r.date, img:exchImgData||''};
+      S.wishlist[idx]={name:name, pts:pts, date:($('exchDate').value||r.date), img:exchImgData||''};
       save(); renderRewards(); closePop(); toast('✅ 已修改心愿：'+name);
       return true;
     }
   );
   const n=$('exchName'); if(n) n.value=r.name||'';
   const p=$('exchPts'); if(p) p.value=(r.pts!=null?r.pts:'');
+  const dt=$('exchDate'); if(dt) dt.value=(r.date||today());
   if(exchImgData){ const pr=$('exchImgPreview'); const im=$('exchPreviewImg'); if(pr&&im){ im.src=exchImgData; pr.style.display='block'; } }
 }
 // 全屏灯箱放大图片（kind: 'done'=已兑换, 'wish'=待兑换）

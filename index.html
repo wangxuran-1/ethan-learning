@@ -133,12 +133,17 @@ body{overflow:hidden}
 .page>.topbar,.page>.content{max-width:480px;margin:0 auto;width:100%}
 .app-hidden{display:none!important}
 .topbar{background:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
-.topbar .back{font-size:22px;color:var(--blue);background:none;border:none}
+.topbar .back{font-size:16px;color:var(--blue);background:none;border:none}
 .topbar .tt{font-size:17px;font-weight:800}
 .topbar .rt{margin-left:auto;font-size:13px;color:var(--sub)}
 .content{padding:14px 16px;flex:1}
 .bigbtn{display:block;width:100%;text-align:left;background:var(--card);border:none;border-radius:16px;padding:16px;margin-bottom:10px;box-shadow:0 3px 10px rgba(60,120,200,.07);font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:12px}
 .bigbtn .ic{font-size:26px}
+  /* 结算页按钮横排紧凑：避免"回到首页"等大块按钮占满整行 */
+  .ge-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+  .ge-btns .bigbtn{flex:1;min-width:120px;justify-content:center;text-align:center;padding:13px 10px;font-size:15px;font-weight:700;margin-bottom:0}
+  .ge-btns .bigbtn .ic{font-size:22px}
+  .ge-btns .bigbtn.ghost{background:var(--bg);color:var(--sub);box-shadow:none;font-weight:600}
 /* session */
 .session{display:flex;flex-direction:column;height:100%}
 .session .hero{background:linear-gradient(135deg,var(--blue),var(--green));color:#fff;border-radius:18px;padding:20px;margin:14px 16px;text-align:center}
@@ -164,6 +169,9 @@ body{overflow:hidden}
 .bookhead .bp{font-size:12px;font-weight:700;color:#5B7FA8;background:rgba(255,255,255,.75);padding:3px 9px;border-radius:10px;white-space:nowrap}
 .bookhead .bc{font-size:14px;font-weight:800;color:#2E6FD8}
 .bookhead.open .bc{color:#fff}
+.stat-card{background:var(--card);border-radius:14px;padding:12px 8px;text-align:center;box-shadow:0 2px 8px rgba(60,120,200,.06)}
+.stat-card .stv{font-size:22px;font-weight:800;color:var(--blue);line-height:1.1}
+.stat-card .std{font-size:11px;color:var(--sub);margin-top:3px;font-weight:600}
 .lesson .st{display:inline-block;font-size:12px;color:var(--good);font-weight:700;margin-top:3px}
 /* quiz */
 .qchar{font-size:64px;text-align:center;font-weight:800;margin:18px 0;color:var(--ink)}
@@ -173,8 +181,9 @@ body{overflow:hidden}
 .opt{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px 10px;text-align:center;font-size:18px;font-weight:700;box-shadow:0 2px 8px rgba(60,120,200,.06)}
 .opt:active{transform:scale(.97)}
 .opt.correct{border-color:var(--good);background:#EAFaf3;color:var(--good)}
-.opt.wrong{border-color:var(--red);background:#FFEDED;color:var(--red)}
-.opt.shake{animation:fbShake .45s}
+.opt.wrong{border-color:#ff9800;background:#FFF3E0;color:#b26a00}
+.opt.shake{animation:fbSway .5s}
+@keyframes fbSway{0%,100%{transform:rotate(0)}25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
 .opt .em{font-size:30px;display:block}
 .qprog{text-align:center;font-size:13px;color:var(--sub);margin-bottom:6px}
 .qhint{position:relative;display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#FFF1C9,#FFD98A);border:2.5px solid #FFC24B;border-radius:18px;padding:11px 15px;margin:4px 0 14px;font-size:16px;font-weight:800;color:#8A5A00;line-height:1.4;box-shadow:0 4px 0 rgba(255,194,75,.45);text-align:left}
@@ -302,21 +311,35 @@ body{overflow:hidden}
 .pop .box.bk{text-align:left}
 .bktitle{font-weight:800;margin:12px 0 4px;text-align:left;font-size:14px;color:var(--blue)}
 .bklist{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:4px 0}
-.bklist label{display:flex;align-items:center;gap:6px;font-size:13px;background:var(--bg);padding:7px 8px;border-radius:8px;cursor:pointer}
+.bklist label{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:8px;font-size:13px;background:var(--bg);padding:7px 8px;border-radius:8px;cursor:pointer}
+.bklist input{width:16px;height:16px;margin:0}
+.bklist .bktext{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bklist .bkscore{white-space:nowrap;font-weight:800}
 .bklist input{width:16px;height:16px;flex:0 0 16px}
 .mini{display:inline-block;background:linear-gradient(135deg,var(--orange),var(--yellow));color:#fff;border:none;border-radius:12px;padding:8px 14px;font-size:14px;font-weight:800;cursor:pointer}
 .stats .s.clickable{cursor:pointer}
 .stats .s.clickable:active{opacity:.6}
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(46,58,75,.95);color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;z-index:80;opacity:0;transition:.3s;pointer-events:none}
-/* 答题反馈大层 */
-#fbOverlay{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto}
-#fbOverlay.show{display:flex}
-#fbOverlay.ok{background:rgba(70,201,155,.94)}
-#fbOverlay.no{background:rgba(255,138,107,.94)}
-#fbOverlay .fb-emoji{font-size:130px;line-height:1;filter:drop-shadow(0 6px 12px rgba(0,0,0,.18));animation:fbPop .45s cubic-bezier(.2,1.5,.4,1)}
-#fbOverlay.no .fb-emoji{animation:fbShake .55s}
-#fbOverlay .fb-text{font-size:44px;font-weight:900;color:#fff;margin-top:2px;text-shadow:0 2px 10px rgba(0,0,0,.18);animation:fbPop .45s .05s both cubic-bezier(.2,1.5,.4,1)}
-#fbOverlay .fb-hint{font-size:21px;color:#fff;margin-top:12px;background:rgba(255,255,255,.22);padding:7px 16px;border-radius:16px;font-weight:700}
+/* 答题反馈 V2：题卡底部轻量小条（原满屏大层已废弃，见 PRD QUIZ-FB-V2） */
+#fbOverlay{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);z-index:90;display:none;align-items:center;justify-content:center;padding:10px 20px;border-radius:22px;font-size:18px;font-weight:900;color:#fff;box-shadow:0 8px 26px rgba(0,0,0,.20);opacity:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease;text-align:center;white-space:nowrap;max-width:94vw}
+#fbOverlay.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0)}
+#fbOverlay.ok{background:linear-gradient(90deg,#2ecc71,#27ae60)}
+#fbOverlay.no{background:linear-gradient(90deg,#ffa06b,#ff7a45)}
+#fbOverlay .fb-msg{white-space:nowrap}
+/* 答案内联高亮小药丸：避免「主文案+答案」挤成两行 */
+#fbOverlay .fb-ans{font-weight:900;background:rgba(255,255,255,.26);padding:1px 9px;border-radius:10px;margin-left:3px}
+/* 答对：在答案上画钩（右上角小勾徽章） */
+.opt,.eq .ans{position:relative}
+.tick{position:absolute;right:-9px;top:-9px;width:34px;height:34px;pointer-events:none;overflow:visible;filter:drop-shadow(0 3px 8px rgba(46,204,113,.45))}
+.tick .tc{transform-origin:center;transform:scale(0);animation:tickPop .3s cubic-bezier(.2,1.7,.4,1) forwards}
+.tick .tp{fill:none;stroke:#fff;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:44;stroke-dashoffset:44;animation:tickDraw .3s .2s cubic-bezier(.65,0,.45,1) forwards}
+@keyframes tickPop{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes tickDraw{to{stroke-dashoffset:0}}
+/* 闯关进度条 + 连击（进度=第几题/总题数，答错不倒退） */
+.qbar{height:12px;background:#eef1f7;border-radius:10px;overflow:hidden;margin:2px 0 6px}
+.qbar>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#4a7dff,#2ecc71);border-radius:10px;transition:width .45s cubic-bezier(.2,1.4,.4,1)}
+.qcombo{text-align:center;font-size:16px;font-weight:900;color:#ff7043;height:22px;line-height:22px;margin-bottom:2px}
+.eq .ans.bad{color:#b26a00;border-bottom-color:#ff9800}
 .confetti{position:absolute;top:-10%;will-change:transform;animation:fbFall 1.15s linear forwards}
 @keyframes fbPop{0%{transform:scale(.3);opacity:0}55%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
 @keyframes fbShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-18px) rotate(-8deg)}30%{transform:translateX(18px) rotate(8deg)}45%{transform:translateX(-13px)}60%{transform:translateX(13px)}75%{transform:translateX(-7px)}90%{transform:translateX(7px)}}
@@ -463,11 +486,12 @@ body{ overflow-wrap:break-word; }
   .pop .box .opts{ gap:12px }
   .pop .box input{ font-size:20px; padding:12px }
   .pop .box .bktitle{ font-size:16px }
-  .bklist{ grid-template-columns:repeat(3,1fr); gap:8px 12px }
+  .bklist{ grid-template-columns:1fr 1fr; gap:8px 12px }
   .bklist label{ font-size:15px; padding:10px 8px }
 }
 /* Pad 横屏：清单/奖励弹框适当加宽，更好利用横向空间 */
-@media (min-width:1024px){ .pop .box.bk{ max-width:688px } }
+@media (min-width:768px){ .pop .box.bk{ max-width:min(92vw, 720px) } }
+@media (min-width:1024px){ .pop .box.bk{ max-width:min(92vw, 860px) } }
 /* ---------- 闯关配置面板（V2） ---------- */
 .tabs{ display:flex; gap:6px; margin:8px 0 12px }
 .tab{ padding:8px 16px; border:2px solid var(--line); background:#fff; border-radius:12px; font-weight:800; font-size:14px; color:var(--sub); cursor:pointer }
@@ -542,6 +566,18 @@ body{ overflow-wrap:break-word; }
 @keyframes heroBounce{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-10px) rotate(4deg)}}
 @keyframes btnPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 @media (prefers-reduced-motion: reduce){ .bonus-hero{animation:none} .bonus-btn{animation:none} }
+.ce-editbtn{font-size:12px;padding:5px 10px;border:none;border-radius:16px;background:var(--orange);color:#fff;cursor:pointer}
+.cal-edit{text-align:left}
+.ce-row{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line)}
+.ce-row .ce-r{flex:1;font-size:14px}
+.ce-row .ce-n{display:flex;align-items:center;gap:4px}
+.ce-in{width:64px;font-size:15px;text-align:center;border:2px solid var(--orange);border-radius:8px;padding:4px}
+.ce-val{font-weight:700;color:var(--orange)}
+.ce-lock{font-size:13px;opacity:.6}
+.ce-del{border:none;background:transparent;font-size:18px;cursor:pointer;padding:2px 6px}
+.ce-row.reward{background:rgba(255,179,71,.08)}
+.ce-tip{font-size:12px;color:var(--sub);margin:10px 0}
+.ce-save{background:var(--green);color:#fff;border:none;padding:8px 16px;border-radius:10px;font-weight:700}
 </style>
 </head>
 <body>
@@ -1039,16 +1075,46 @@ function spawnConfetti(ov){
     ov.appendChild(c);
   }
 }
+// 答对时在答案上画钩（右上角小勾徽章）
+function drawTick(el){
+  if(!el || el.querySelector('.tick')) return;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','tick'); svg.setAttribute('viewBox','0 0 52 52');
+  svg.innerHTML='<circle class="tc" cx="26" cy="26" r="24" fill="#2ecc71"/><path class="tp" d="M15 27 l8 8 l14 -15"/>';
+  el.appendChild(svg);
+}
+// 闯关进度条 + 连击（进度按题目推进，答错不倒退）
+const FB_OK_LINES=['答对啦！','太棒了！','你真厉害！','漂亮，继续保持！','这题难不住你！'];
+function quizBar(body, stat){
+  const bar=document.createElement('div'); bar.className='qbar'; bar.innerHTML='<i></i>'; body.appendChild(bar);
+  const cb=document.createElement('div'); cb.className='qcombo'; body.appendChild(cb);
+  const fill=bar.querySelector('i');
+  const tot=Math.max(1, stat.total||1);
+  fill.style.width=Math.round(((stat.idx-1)/tot)*100)+'%';
+  cb.textContent=(stat.combo>1)?('连击 ×'+stat.combo+' 🔥'):'';
+  return {
+    step(){ fill.style.width=Math.round((stat.idx/tot)*100)+'%'; },
+    combo(){ cb.textContent=(stat.combo>1)?('连击 ×'+stat.combo+' 🔥'):''; }
+  };
+}
 function showFeedback(correct, next, hint){
   const ov=$('fbOverlay');
+  let msg;
+  if(correct){
+    msg = FB_OK_LINES[Math.floor(Math.random()*FB_OK_LINES.length)];
+  } else if(hint && hint.indexOf('正确答案')>=0){
+    const ans = esc(hint.replace(/^正确答案：?\s*/,'').trim());
+    msg = '没关系，答案是 <b class="fb-ans">'+ans+'</b>';
+  } else if(hint && hint.indexOf('次机会')>=0){
+    msg = '没关系，再试一次！（'+esc(hint)+'）';
+  } else {
+    msg = '没关系，再试一次！';
+  }
   ov.className='show '+(correct?'ok':'no');
-  ov.innerHTML='<div class="fb-emoji">'+(correct?'🎉':'💡')+'</div>'
-    +'<div class="fb-text">'+(correct?'答对啦！':'再想想～')+'</div>'
-    + (hint?'<div class="fb-hint">'+esc(hint)+'</div>':'');
-  if(correct) spawnConfetti(ov);
+  ov.innerHTML='<span class="fb-msg">'+msg+'</span>';
   playTone(correct?'right':'wrong');
   clearTimeout(_fbT);
-  _fbT=setTimeout(()=>{ ov.className=''; ov.innerHTML=''; if(typeof next==='function') next(); }, correct?950:1150);
+  _fbT=setTimeout(()=>{ ov.className=''; ov.innerHTML=''; if(typeof next==='function') next(); }, correct?1000:1500);
 }
 function speak(t,lang,rate){ if(!('speechSynthesis' in window)) return; try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang=lang||'zh-CN'; u.rate=(rate!=null?rate:0.9); speechSynthesis.speak(u); }catch(e){} }
 
@@ -1303,7 +1369,7 @@ document.addEventListener('click', e=>{
   const scb=e.target.closest('#scoreCheckBtn');
   if(scb){ openScoreChecklist(); return; }
   const back=e.target.closest('[data-close]');
-  if(back){ navTo('home'); return; }
+  if(back){ if(e.target.closest('#pop')) return; navTo('home'); return; }
 });
 
 let currentNav='home';
@@ -1462,6 +1528,7 @@ function choiceQ(body, opts){
   const prog=document.createElement('div'); prog.className='qprog'; body.appendChild(prog);
   const refresh=()=>{ prog.textContent='第 '+opts.stat.idx+' / '+opts.stat.total+'　对 '+opts.stat.right+'　错 '+opts.stat.wrong; };
   refresh();
+  const ui=quizBar(body, opts.stat);
   body.appendChild(hintBubble(opts.hint));
   if(opts.speak){
     const sp=document.createElement('button');
@@ -1476,19 +1543,24 @@ function choiceQ(body, opts){
     const b=document.createElement('div'); b.className='opt'; b.textContent=label;
     b.onclick=()=>{
       if(label===opts.answer){
-        b.classList.add('correct');
         [...wrap.children].forEach(x=> x.onclick=null);
-        setTimeout(()=>{ opts.stat.right++; opts.onDone(true); }, 350);
+        b.classList.add('correct');
+        drawTick(b);
+        opts.stat.combo = (tries===0) ? ((opts.stat.combo||0)+1) : 0;
+        ui.step(); ui.combo();
+        opts.stat.right++; refresh();
+        showFeedback(true, ()=> opts.onDone(true));
       } else {
         b.classList.add('wrong','shake'); playTone('wrong');
+        opts.stat.combo=0; ui.combo();
         tries++;
         if(tries>=2){
           [...wrap.children].forEach(x=> x.onclick=null);
           [...wrap.children].forEach(x=>{ if(x.textContent===opts.answer) x.classList.add('correct'); });
+          opts.stat.wrong++; refresh(); ui.step();
           showFeedback(false, ()=> opts.onDone(false), '正确答案：'+opts.answer);
         } else {
-          opts.stat.wrong++;
-          showFeedback(false, null, '再想想～还有 '+(2-tries)+' 次机会');
+          showFeedback(false, null, '还有 '+(2-tries)+' 次机会');
           setTimeout(()=> b.classList.remove('wrong','shake'), 650);
         }
       }
@@ -1502,6 +1574,7 @@ function mathQ(body, opts){
   const prog=document.createElement('div'); prog.className='qprog'; body.appendChild(prog);
   const refresh=()=>{ prog.textContent='第 '+opts.stat.idx+' / '+opts.stat.total+'　对 '+opts.stat.right+'　错 '+opts.stat.wrong; };
   refresh();
+  const ui=quizBar(body, opts.stat);
   body.appendChild(hintBubble(opts.hint));
   let input='';
   const eq=document.createElement('div'); eq.className='eq'; eq.innerHTML=esc(opts.q)+' = <span class="ans"></span>'; body.appendChild(eq);
@@ -1522,13 +1595,22 @@ function mathQ(body, opts){
   function check(){
     if(input==='') return;
     const ok = parseInt(input,10)===opts.ans;
+    const ansEl = eq.querySelector('.ans');
     if(ok){
-      opts.stat.right++;
+      [...kp.children].forEach(x=> x.disabled=true);
+      drawTick(ansEl);
+      opts.stat.combo = (tries===0) ? ((opts.stat.combo||0)+1) : 0;
+      ui.step(); ui.combo();
+      opts.stat.right++; refresh();
       showFeedback(true, ()=> opts.onDone(true));
     } else {
-      tries++; if(tries===1) opts.stat.wrong++;
-      if(tries>=2){ showFeedback(false, ()=> opts.onDone(false), '正确答案 '+opts.ans); }
-      else { showFeedback(false, null, '再想想～还有 '+(2-tries)+' 次机会'); input=''; eq.querySelector('.ans').textContent=''; }
+      opts.stat.combo=0; ui.combo();
+      ansEl.classList.add('bad');
+      setTimeout(()=> ansEl.classList.remove('bad'), 650);
+      tries++;
+      refresh();
+      if(tries>=2){ opts.stat.wrong++; ui.step(); showFeedback(false, ()=> opts.onDone(false), '正确答案 '+opts.ans); }
+      else { showFeedback(false, null, '还有 '+(2-tries)+' 次机会'); input=''; ansEl.textContent=''; }
     }
   }
 }
@@ -1617,8 +1699,8 @@ function startEnChallengeV2(){
     const picHead='<div class="qchar" style="font-size:72px">'+(w.img?'<img src="'+w.img+'" style="max-width:160px;max-height:160px;border-radius:14px">':(w.em||'📝'))+'</div>';
     if(type==='listen'){
       const dist=shuffle(others.map(x=>x.en)).slice(0,3);
-      choiceQ(body,{hint:'🔊 听单词，选出你听到的英文', choices:shuffle([w.en].concat(dist)), answer:w.en, stat, onDone:next, speak:()=>speak(w.en,'en-US')});
-      setTimeout(()=>speak(w.en,'en-US'),350);
+      choiceQ(body,{hint:'🔊 听单词，选出你听到的英文', choices:shuffle([w.en].concat(dist)), answer:w.en, stat, onDone:next, speak:()=>speak(w.en,'en-US',0.6)});
+      setTimeout(()=>speak(w.en,'en-US',0.6),350);
     } else if(type==='pic'){
       const dist=shuffle(others.map(x=>x.en)).slice(0,3);
       choiceQ(body,{hint:'🖼️ 看图片，选出对应的英文', head:picHead, choices:shuffle([w.en].concat(dist)), answer:w.en, stat, onDone:next});
@@ -1628,8 +1710,8 @@ function startEnChallengeV2(){
       choiceQ(body,{hint:'🔤 看图+英文，选出它的中文意思', head, choices:shuffle([w.zh].concat(dist)), answer:w.zh, stat, onDone:next});
     } else if(type==='listenzh'){
       const dist=shuffle(others.map(x=>x.zh)).slice(0,3);
-      choiceQ(body,{hint:'🔊 听单词，选出它的中文意思', choices:shuffle([w.zh].concat(dist)), answer:w.zh, stat, onDone:next, speak:()=>speak(w.en,'en-US')});
-      setTimeout(()=>speak(w.en,'en-US'),350);
+      choiceQ(body,{hint:'🔊 听单词，选出它的中文意思', choices:shuffle([w.zh].concat(dist)), answer:w.zh, stat, onDone:next, speak:()=>speak(w.en,'en-US',0.6)});
+      setTimeout(()=>speak(w.en,'en-US',0.6),350);
     } else {
       const head='<div class="qchar" style="font-size:40px">'+esc(w.zh)+'</div>';
       const dist=shuffle(others.map(x=>x.en)).slice(0,3);
@@ -1812,6 +1894,9 @@ function renderHanziMenu(){
   $('startHanziQuiz').onclick=()=> startHanziChallenge();
 }
 // 语文复习闯关：8 种题型（随机混合出题）
+// 句子填空干扰项过滤：全量词/句集合（避免“插进去也通顺”的歧义，见 PRD HANZI-FILL-UNIQ）
+const ALL_WORDS_SET = (()=>{ const s=new Set(); D.hanzi.forEach(b=>b.lessons.forEach(l=>l.chars.forEach(c=>(c.words||[]).forEach(w=>w&&s.add(w))))); return s; })();
+const ALL_SENTS_SET = (()=>{ const s=new Set(); D.hanzi.forEach(b=>b.lessons.forEach(l=>l.chars.forEach(c=>{ if(c.sent)s.add(c.sent); if(c.wsent)s.add(c.wsent); }))); return s; })();
 const HANZI_TYPES = ['char2pinyin','pinyin2char','listen','fillchar','wordfill','wordpick','word2pinyin','fillsent'];
 // 根据题型 + 字，生成一道题的展示数据（head/hint/choices/answer/speak）
 function hanziQSpec(type, ch){
@@ -1831,7 +1916,7 @@ function hanziQSpec(type, ch){
     const dist=shuffle(others.map(x=>x.c)).filter(c=>c&&c!==ch.c).slice(0,3);
     choices=shuffle([ch.c].concat(dist)); answer=ch.c;
   } else if(type==='listen'){          // 听音选字
-    hint='🔊 听一听，选出正确的字'; speakFn=()=>speak(ch.c,'zh-CN');
+    hint='🔊 听一听，选出正确的字'; speakFn=()=>speak(ch.c,'zh-CN',0.7);
     const dist=shuffle(others.map(x=>x.c)).filter(c=>c&&c!==ch.c).slice(0,3);
     choices=shuffle([ch.c].concat(dist)); answer=ch.c;
   } else if(type==='fillchar'){        // 句子填空（挖字）
@@ -1843,7 +1928,11 @@ function hanziQSpec(type, ch){
     }
     head='<div class="qsent">'+esc(sent.replace(ch.c,'＿'))+'</div>';
     hint='✏️ 句子里少了哪个字？选出来';
-    const dist=shuffle(others.map(x=>x.c)).filter(c=>c&&c!==ch.c).slice(0,3);
+    const dist=shuffle(others.map(x=>x.c)).filter(c=>{
+      if(!c||c===ch.c) return false;
+      if(sent.indexOf(ch.c)>=0) return !ALL_SENTS_SET.has(sent.replace(ch.c,c)); // 真实句：另一字带入也成句→排除
+      return !(rest && ALL_WORDS_SET.has(c+rest));                                // 模板句：c+后缀成词→排除
+    }).slice(0,3);
     choices=shuffle([ch.c].concat(dist)); answer=ch.c;
   } else if(type==='wordfill'){        // 词组填空
     const w=words.find(x=>x.indexOf(ch.c)===0)||words[0];
@@ -1875,7 +1964,10 @@ function hanziQSpec(type, ch){
     }
     head='<div class="qsent">'+esc(sent.replace(w,'＿'))+'</div>';
     hint='✏️ 句子里少了哪个词？选出来';
-    const dist=shuffle(others.map(x=>(x.words&&x.words[0])||(x.c+x.c))).filter(x=>x&&x!==w).slice(0,3);
+    const dist=shuffle(others.map(x=>(x.words&&x.words[0])||(x.c+x.c))).filter(x=>{
+      if(!x||x===w) return false;
+      return !ALL_SENTS_SET.has(sent.replace(w,x)); // 另一词带入后若是已知句→排除
+    }).slice(0,3);
     choices=shuffle([w].concat(dist)); answer=w;
   }
   return {head,hint,choices,answer,speak:speakFn};
@@ -1980,7 +2072,7 @@ function checkMath(){
     } else {
       mathInput='';
       const eq=$('mathBody').querySelector('.eq'); if(eq) eq.querySelector('.ans').textContent='';
-      showFeedback(false, null, '再想想，还有 '+(3-mathCur.tries)+' 次机会');
+      showFeedback(false, null, '还有 '+(3-mathCur.tries)+' 次机会');
     }
   }
 }
@@ -2142,9 +2234,10 @@ function renderMathBook(){
     const lvAll = lvDone===lvTotal;
     const lvNext = (li===nextLv);
     const lopen = mathLevelOpen===li;
-    h += '<div class="bookhead'+(lvNext?' rec':'')+'" data-mlv="'+li+'">'
-      + '<span class="bh-left"><span class="bh-arr">'+(lopen?'▼':'▶')+'</span><span>'+esc(L.name)+'</span></span>'
-      + '<span class="bh-right">'+(lvAll?'✓ 已学完':(lvDone+' / '+lvTotal))+'</span></div>';
+    h += '<div class="bookhead'+(lopen?' open':'')+(lvNext?' rec':'')+'" data-mlv="'+li+'">'
+      + '<span class="bt">'+esc(L.name)+'</span>'
+      + '<span class="bp">'+(lvAll?'✓ 已学完':(lvDone+' / '+lvTotal))+'</span>'
+      + '<span class="bc">'+(lopen?'▾':'▸')+'</span></div>';
     if(!lopen) return;
     L.books.forEach((b, bi)=>{
       const bnum = bi+1;
@@ -2153,9 +2246,10 @@ function renderMathBook(){
       const bNext = lvNext && b.some(l=> l.n===nextLesson);
       const bkey = li+'-'+bnum;
       const bopen = (mathBookOpen!==null) ? (mathBookOpen===bkey) : bNext;
-      h += '<div class="bookhead'+(bNext?' rec':'')+'" data-mbk="'+bkey+'" style="margin-left:14px;background:var(--bg);border:1px solid var(--line);border-radius:10px">'
-        + '<span class="bh-left"><span class="bh-arr">'+(bopen?'▼':'▶')+'</span><span>第 '+bnum+' 册</span></span>'
-        + '<span class="bh-right">'+(bAll?'✓ 已学完':(bDone+' / '+b.length))+'</span></div>';
+      h += '<div class="bookhead'+(bopen?' open':'')+(bNext?' rec':'')+'" data-mbk="'+bkey+'" style="margin-left:14px">'
+        + '<span class="bt">第 '+bnum+' 册</span>'
+        + '<span class="bp">'+(bAll?'✓ 已学完':(bDone+' / '+b.length))+'</span>'
+        + '<span class="bc">'+(bopen?'▾':'▸')+'</span></div>';
       if(!bopen) return;
       b.forEach(l=>{
         const uid='m'+li+'_'+l.n;
@@ -2271,7 +2365,7 @@ function runWord(mode, pool, idx){
     const nb=document.createElement('button'); nb.className='next-btn'; nb.textContent='下一题 →';
     nb.onclick=()=> runWord(mode, pool, idx+1);
     body.appendChild(nb);
-    speak(w.en,'en-US');
+    speak(w.en,'en-US',0.6);
   };
   const resolve=()=>{
     wordRight++;
@@ -2283,8 +2377,8 @@ function runWord(mode, pool, idx){
   };
   const onWrong=()=>{ qWrong++; wordWrong++; refresh(); };
   if(m==='listen'){
-    const sb=document.createElement('button'); sb.className='speak-btn'; sb.textContent='🔊 听单词'; sb.onclick=()=>speak(w.en,'en-US'); body.appendChild(sb);
-    setTimeout(()=>speak(w.en,'en-US'), 350);
+    const sb=document.createElement('button'); sb.className='speak-btn'; sb.textContent='🔊 听单词'; sb.onclick=()=>speak(w.en,'en-US',0.6); body.appendChild(sb);
+    setTimeout(()=>speak(w.en,'en-US',0.6), 350);
     const opts=pickOpts(w.en, ENWORDS.map(x=>x.en));
     body.appendChild(buildOpts(opts, w.en, resolve, null, onWrong));
   } else if(m==='pic'){
@@ -2315,7 +2409,7 @@ function buildGoldEnd(o){
     '<div class="ge-btns"></div>';
   const btns=wrap.querySelector('.ge-btns');
   (o.buttons||[]).forEach(b=>{
-    const btn=document.createElement('button'); btn.className='bigbtn';
+    const btn=document.createElement('button'); btn.className='bigbtn'+(b.ghost?' ghost':'');
     if(b.style) btn.style.cssText=b.style;
     btn.innerHTML='<span class="ic">'+(b.ic||'')+'</span>'+b.label;
     btn.onclick=b.onclick;
@@ -2338,7 +2432,7 @@ function showGameEnd(title, right, wrong, board, relaunch, strike){
     extraHtml: extra,
     buttons:[
       {ic:'🔁', label:'重新闯关', onclick:relaunch},
-      {ic:'🏠', label:'回到首页', onclick:()=>{ closePage(); currentNav='home'; renderHome(); checkMedals(); }}
+      {ic:'🏠', label:'回到首页', ghost:true, onclick:()=>{ closePage(); currentNav='home'; renderHome(); checkMedals(); }}
     ]
   }));
   playTone('cheer'); checkMedals();
@@ -2415,7 +2509,7 @@ function runEnWordC(){
     const nb=document.createElement('button'); nb.className='next-btn'; nb.textContent='下一题 →';
     nb.onclick=()=> runEnWordC();
     body.appendChild(nb);
-    speak(w.en,'en-US');
+    speak(w.en,'en-US',0.6);
   };
   const resolve=()=>{
     c.right++;
@@ -2427,8 +2521,8 @@ function runEnWordC(){
   };
   const onWrong=()=>{ qWrong++; c.wrong++; refresh(); };
   if(m==='listen'){
-    const sb=document.createElement('button'); sb.className='speak-btn'; sb.textContent='🔊 听单词'; sb.onclick=()=>speak(w.en,'en-US'); body.appendChild(sb);
-    setTimeout(()=>speak(w.en,'en-US'), 350);
+    const sb=document.createElement('button'); sb.className='speak-btn'; sb.textContent='🔊 听单词'; sb.onclick=()=>speak(w.en,'en-US',0.6); body.appendChild(sb);
+    setTimeout(()=>speak(w.en,'en-US',0.6), 350);
     const opts=pickOpts(w.en, ENWORDS.map(x=>x.en));
     body.appendChild(buildOpts(opts, w.en, resolve, null, onWrong));
   } else if(m==='pic'){
@@ -2457,7 +2551,7 @@ function enChallengeEnd(){
     buttons:[
       {ic:'🔁', label:'重新闯关', onclick:()=> startEnChallenge()},
       {ic:'📑', label:'其他练习模式', onclick:()=>{ renderEnMenu(); openPage('pgEnMenu'); }},
-      {ic:'🏠', label:'回到首页', onclick:()=>{ closePage(); currentNav='home'; renderHome(); checkMedals(); }}
+      {ic:'🏠', label:'回到首页', ghost:true, onclick:()=>{ closePage(); currentNav='home'; renderHome(); checkMedals(); }}
     ]
   }));
   playTone('cheer'); checkMedals();
@@ -2545,8 +2639,24 @@ function renderCalendar(){
   $('calPrev').onclick=()=>{ calM--; if(calM<0){ calM=11; calY--; } renderCalendar(); };
   $('calNext').onclick=()=>{ calM++; if(calM>11){ calM=0; calY++; } renderCalendar(); };
   $('bkBtn').onclick=openBackfill;
-  $('calBody').querySelectorAll('[data-day]').forEach(c=> c.onclick=()=>{ calSel=c.dataset.day; renderCalendar(); });
-  renderDayDetail(calSel || t);
+  $('calBody').querySelectorAll('[data-day]').forEach(c=> c.onclick=()=>{ calSel=c.dataset.day; renderCalendar(); openCalDayDetail(calSel); });
+}
+function openCalDayDetail(k){
+  if(!k) return;
+  const [y,m,d]=k.split('-').map(Number);
+  const wd=['周日','周一','周二','周三','周四','周五','周六'][new Date(y,m-1,d).getDay()];
+  popBox(
+    '<button class="popx" data-close>✕</button>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+      '<div style="font-weight:800;text-align:left">📅 '+m+'月'+d+'日 '+wd+' 得分明细</div>'+
+      '<button class="ce-editbtn" data-editday="1">✏️ 修改</button>'+
+    '</div>'+
+    buildDayDetailHTML(k),
+    null
+  );
+  $('popBox').classList.add('bk');
+  const xb=$('popBox').querySelector('[data-close]'); if(xb) xb.onclick=closePop;
+  const eb=$('popBox').querySelector('[data-editday]'); if(eb) eb.onclick=()=> openCalEdit(k);
 }
 function buildDayDetailHTML(k){
   if(!k) return '';
@@ -2622,6 +2732,66 @@ function buildDayDetailHTML(k){
   h+='</div>';
   return h;
 }
+function isRewardItem(x){ return isBonusReason(x.r) || (x.r||'').indexOf('家长加分')===0 || (x.r||'').indexOf('补录·额外加分')===0; }
+let calEditItems=null, calEditDel=[];
+function openCalEdit(k){
+  if(!k) return;
+  const enter=()=>{
+    calEditItems = ((S.pointLog&&S.pointLog[k]&&S.pointLog[k].items)||[]).map(x=>({n:x.n,r:x.r}));
+    calEditDel=[];
+    renderCalEdit(k);
+  };
+  if(S.pin){ askPin(ok=>{ if(ok) enter(); else toast('PIN 错误'); }); }
+  else { enter(); }
+}
+function renderCalEdit(k){
+  const items=calEditItems||[];
+  let rows='';
+  items.forEach((it,idx)=>{
+    const reward=isRewardItem(it);
+    const valHtml = reward
+      ? '<input class="ce-in" type="number" min="1" max="99" value="'+it.n+'" data-i="'+idx+'">'
+      : '<span class="ce-val">+'+it.n+' ⭐</span><span class="ce-lock" title="任务分只能删除，不能改值">🔒</span>';
+    rows += '<div class="ce-row '+(reward?'reward':'task')+'">'
+      + '<span class="ce-r">'+esc(it.r)+'</span>'
+      + '<span class="ce-n">'+valHtml+'</span>'
+      + '<button class="ce-del" data-del="'+idx+'">🗑</button>'
+      + '</div>';
+  });
+  const html =
+    '<button class="popx" data-close>✕</button>'+
+    '<div class="cal-edit">'+
+      '<div style="font-weight:800;margin-bottom:8px;text-align:left">✏️ 编辑 '+k+' 得分</div>'+
+      (rows || '<div class="empty" style="padding:14px 0">这天没有积分记录</div>')+
+      '<div class="ce-tip">🔒 任务分只能删除，不能改值　·　🎁 家长加分可改值</div>'+
+      '<div class="opts"><button data-cancel>取消</button><button class="ce-save" data-ok>保存</button></div>'+
+    '</div>';
+  popBox(html, ()=>{ saveCalEdit(k); return false; });
+  const box=$('popBox'); box.classList.add('bk');
+  const xb=box.querySelector('[data-close]'); if(xb) xb.onclick=closePop;
+  box.querySelectorAll('.ce-in').forEach(inp=> inp.oninput=()=>{ const i=+inp.dataset.i; calEditItems[i].n=Math.max(1,Math.min(99,Number(inp.value)||0)); });
+  box.querySelectorAll('[data-del]').forEach(b=> b.onclick=()=>{ const i=+b.dataset.del; const it=calEditItems[i]; if(it && !isRewardItem(it)) calEditDel.push(it.r); calEditItems.splice(i,1); renderCalEdit(k); });
+  const c=box.querySelector('[data-cancel]'); if(c) c.onclick=()=> openCalDayDetail(k);
+}
+function saveCalEdit(k){
+  calEditDel.forEach(r=> unmarkTaskDay(k, r));
+  const items=(calEditItems||[]).map(x=>({n:Number(x.n)||0, r:x.r}));
+  if(!S.pointLog) S.pointLog={};
+  if(items.length){
+    let earn=0, spend=0;
+    items.forEach(x=>{ if(x.n>=0) earn+=x.n; else spend+=(-x.n); });
+    S.pointLog[k]={earn:earn, spend:spend, items:items};
+  } else { delete S.pointLog[k]; }
+  S.points = Math.max(0, totalEarned() - totalRedeemed());
+  syncSidebar(); save();
+  openCalDayDetail(k);
+}
+function unmarkTaskDay(k, r){
+  (S.tasks.learning||[]).forEach(t=>{ if(r===t.name || r.indexOf(t.name+' ')===0) rmDone(t.id,k); });
+  [].concat(S.tasks.lifeHabits||[],S.tasks.lifeSports||[]).forEach(t=>{ if(r===t.name) rmDone(t.id,k); });
+}
+function rmDone(id,k){ const a=S.doneDates[id]; if(a){ const i=a.indexOf(k); if(i>=0) a.splice(i,1); } }
+
 function renderDayDetail(k){
   if(!k) return;
   $('calDetail').innerHTML = buildDayDetailHTML(k);
@@ -3359,10 +3529,10 @@ function openScoreChecklist(){
 // ---------- 日历：积分补录（表单） ----------
 function openBackfill(){
   let sel=0; const t=today();
-  const taskList=(S.tasks.learning||[]).map(tk=> '<label><input type="checkbox" data-bk="learn" data-id="'+tk.id+'">'+tk.ic+' '+esc(tk.name)+' <span style="color:var(--orange)">+2</span></label>').join('');
-  const habitList=(S.tasks.lifeHabits||[]).map(tk=> '<label><input type="checkbox" data-bk="habit" data-id="'+tk.id+'">'+tk.ic+' '+esc(tk.name)+' <span style="color:var(--orange)">+1</span></label>').join('');
-  const sportList=(S.tasks.lifeSports||[]).map(tk=> '<label><input type="checkbox" data-bk="sport" data-id="'+tk.id+'">'+tk.ic+' '+esc(tk.name)+' <span style="color:var(--orange)">+1</span></label>').join('');
-  const revList=['hanzi','math','en'].map(b=> '<label><input type="checkbox" data-bk="rev" data-id="'+b+'">'+(b==='hanzi'?'🟢 语文复习':b==='math'?'🔵 数学复习':'🟠 英语复习')+' <span style="color:var(--orange)">+3</span></label>').join('');
+  const taskList=(S.tasks.learning||[]).map(tk=> '<label><input type="checkbox" data-bk="learn" data-id="'+tk.id+'"><span class="bktext">'+tk.ic+' '+esc(tk.name)+'</span><span class="bkscore" style="color:var(--orange)">+2</span></label>').join('');
+  const habitList=(S.tasks.lifeHabits||[]).map(tk=> '<label><input type="checkbox" data-bk="habit" data-id="'+tk.id+'"><span class="bktext">'+tk.ic+' '+esc(tk.name)+'</span><span class="bkscore" style="color:var(--orange)">+1</span></label>').join('');
+  const sportList=(S.tasks.lifeSports||[]).map(tk=> '<label><input type="checkbox" data-bk="sport" data-id="'+tk.id+'"><span class="bktext">'+tk.ic+' '+esc(tk.name)+'</span><span class="bkscore" style="color:var(--orange)">+1</span></label>').join('');
+  const revList=['hanzi','math','en'].map(b=> '<label><input type="checkbox" data-bk="rev" data-id="'+b+'"><span class="bktext">'+(b==='hanzi'?'🟢 语文复习':b==='math'?'🔵 数学复习':'🟠 英语复习')+'</span><span class="bkscore" style="color:var(--orange)">+3</span></label>').join('');
   popBox(
     '<button class="popx" data-close>✕</button>'+
     '<div style="font-weight:800;margin-bottom:4px">📝 积分补录</div>'+

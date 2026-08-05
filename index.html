@@ -692,6 +692,22 @@ var CLOUD = {
 };
 var _passEntered = null;
 var _pushTimer = null;
+var _localWarned = false;
+function _syncBadge(state){
+  try{
+    var b = document.getElementById('syncBadge');
+    if(!b){
+      b = document.createElement('div');
+      b.id = 'syncBadge';
+      b.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:99990;font:600 11px/1.4 -apple-system,sans-serif;padding:5px 9px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none;opacity:.92';
+      (document.body||document.documentElement).appendChild(b);
+    }
+    if(state==='ok'){ b.textContent='☁️ 已同步'; b.style.background='#2ecc71'; b.style.color='#fff'; }
+    else if(state==='local'){ b.textContent='📱 仅本机'; b.style.background='#f39c12'; b.style.color='#fff'; }
+    else if(state==='err'){ b.textContent='☁️ 同步失败'; b.style.background='#e74c3c'; b.style.color='#fff'; }
+    else if(state==='wait'){ b.textContent='☁️ 同步中…'; b.style.background='#3498db'; b.style.color='#fff'; }
+  }catch(e){}
+}
 function _ph(s){ var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))>>>0; } return h.toString(16); }
 function cloudInit(){
   return new Promise(function(res){
@@ -726,14 +742,29 @@ function askPass(){
   });
 }
 function cloudPush(){
-  if(!CLOUD.ready || !_passEntered) return;
+  if(!CLOUD.ready){
+    if(_syncBadge) _syncBadge('local');
+    return;
+  }
+  // 口令已在本机保存过则自动复用，避免“启动时关掉口令框导致永远不同步”
+  if(!_passEntered){
+    try{ var sp = localStorage.getItem('ethan_cloud_pass'); if(sp === CLOUD.passHash) _passEntered = sp; }catch(e){}
+  }
+  if(!_passEntered){
+    if(!_localWarned){ _localWarned = true; toast('未设置云端口令，数据仅保存在本机'); }
+    if(_syncBadge) _syncBadge('local');
+    return;
+  }
+  if(_syncBadge) _syncBadge('wait');
   clearTimeout(_pushTimer);
   _pushTimer = setTimeout(function(){
     try{
       S.ts = Date.now();
-      CLOUD.db.collection(CLOUD.coll).doc(CLOUD.docId).set({ data: S, ts: S.ts, pass: _ph(_passEntered) });
+      CLOUD.db.collection(CLOUD.coll).doc(CLOUD.docId).set({ data: S, ts: S.ts, pass: _ph(_passEntered) })
+        .then(function(){ if(_syncBadge) _syncBadge('ok'); })
+        .catch(function(){ if(_syncBadge) _syncBadge('err'); });
       try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
-    }catch(e){}
+    }catch(e){ if(_syncBadge) _syncBadge('err'); }
   }, 700);
 }
 function cloudPull(){
@@ -748,6 +779,7 @@ function cloudPull(){
           S = d.data;
           try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
           if(typeof renderHome==='function') renderHome();
+          if(_syncBadge) _syncBadge('ok');
           toast('已从云端同步');
         }
       }

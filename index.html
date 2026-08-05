@@ -710,6 +710,7 @@ function _syncBadge(state){
     else if(state==='nologin'){ b.textContent='☁️ 未登录(仍可同步)'; b.style.background='#9b59b6'; b.style.color='#fff'; }
     else if(state==='err'){ b.textContent='☁️ 同步失败'; b.style.background='#e74c3c'; b.style.color='#fff'; }
     else if(state==='wait'){ b.textContent='☁️ 同步中…'; b.style.background='#3498db'; b.style.color='#fff'; }
+    try{ b.title = (_cloudErr ? ('云同步错误: '+_cloudErr) : '云同步状态'); }catch(e){}
   }catch(e){}
 }
 function _sdkLoad(src, onok, onfail){
@@ -726,11 +727,19 @@ function _sdkFail(){
 function cloudInit(){
   return new Promise(function(res){
     try{
-      if(typeof cloudbase==='undefined'){ res(false); return; }
-      // IIFE bundle may expose {default: init} or init directly; npm uses cloudbase.init()
+      if(typeof cloudbase==='undefined'){ _cloudErr='cloudbase 未定义(SDK未加载)'; res(false); return; }
+      // IIFE 包导出结构为 { default: { init, ... } }；必须作为「方法」调用 raw.init() 以保住 this，
+      // 否则会抛 "this.useDefaultAdapter is not a function"。
       var raw = (cloudbase && typeof cloudbase==='object' && cloudbase.default) ? cloudbase.default : cloudbase;
-      var initFn = (typeof raw.init==='function') ? raw.init : raw;
-      var app = initFn({ env: CLOUD.env, appID: CLOUD.appid });
+      var app;
+      if (raw && typeof raw.init==='function'){
+        app = raw.init({ env: CLOUD.env });        // 关键：保留 this
+      } else if (typeof raw==='function'){
+        app = raw({ env: CLOUD.env });
+      } else {
+        _cloudErr = 'cloudbase 导出结构异常: ' + (raw ? Object.keys(raw).join(',') : 'undefined');
+        res(false); return;
+      }
       CLOUD.app = app; CLOUD.db = app.database();
       CLOUD.ready = true; res(true);   // SDK + DB 引用就绪，立即放行
       // 后台尝试匿名登录（开放规则允许未登录，但登录更稳妥，失败也不阻塞）
@@ -739,7 +748,7 @@ function cloudInit(){
           .then(function(){})
           .catch(function(){ try{ if(_syncBadge) _syncBadge('nologin'); }catch(e){} });
       }catch(e){}
-    }catch(e){ _cloudErr = String(e); res(false); }
+    }catch(e){ _cloudErr = String((e&&e.message)||e); res(false); }
   });
 }
 function cloudPush(){
@@ -781,7 +790,10 @@ function bootCloud(){
     if(typeof cloudbase!=='undefined' && cloudbase){
       var r = (typeof cloudbase==='object' && cloudbase.default) ? cloudbase.default : cloudbase;
       if(typeof r.init==='function' || typeof r==='function'){
-        cloudInit().then(function(ok){ if(ok){ cloudPull(); } else { if(_syncBadge) _syncBadge('local'); } });
+        cloudInit().then(function(ok){
+          if(ok){ cloudPull(); }
+          else { if(_syncBadge) _syncBadge('local'); if(_cloudErr && !_localWarned){ _localWarned=true; try{ toast('云同步未开启: '+_cloudErr.slice(0,60)); }catch(e){} } }
+        });
         return;
       }
     }

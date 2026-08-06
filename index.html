@@ -827,7 +827,7 @@ function bootCloud(){
       var r = (typeof cloudbase==='object' && cloudbase.default) ? cloudbase.default : cloudbase;
       if(typeof r.init==='function' || typeof r==='function'){
         cloudInit().then(function(ok){
-          if(ok){ cloudPull(); }
+          if(ok){ cloudPull().then(function(){ try{ seedSupp(); cloudPush(); }catch(e){} }); }
           else { if(_syncBadge) _syncBadge('local'); if(_cloudErr && !_localWarned){ _localWarned=true; try{ toast('云同步未开启: '+_cloudErr.slice(0,60)); }catch(e){} } }
         });
         return;
@@ -1120,10 +1120,42 @@ function speak(t,lang,rate){ if(!('speechSynthesis' in window)) return; try{ spe
 
 // 汉字扁平化
 const ALLCH = [];
+// [SUPP-SEED-BOOK] 注入补充生字册 book=7（hidden：不进选课/进度/配置列表，但闯关与错题库强制纳入）
+if(!(D.hanzi && D.hanzi.some(function(b){return b.book===7;}))){ D.hanzi.push({ book:7, hidden:true, lessons:[ { n:1, title:'补充生字·第一辑', chars:[
+    {"c":"傲","py":"ào","words":["骄傲","傲慢","傲气"],"sent":"他太骄傲了。","wp":["ào jiāo","ào màn","ào qì"],"wsent":"小猫很傲慢。"},
+    {"c":"让","py":"ràng","words":["让座","让路","礼让"],"sent":"我给奶奶让座。","wp":["ràng zuò","ràng lù","lǐ ràng"],"wsent":"小狗给我们让路。"},
+    {"c":"捡","py":"jiǎn","words":["捡起","捡到","捡东西"],"sent":"我捡到一支笔。","wp":["jiǎn qǐ","jiǎn dào","jiǎn dōng xi"],"wsent":"弟弟捡起树叶。"},
+    {"c":"倒","py":"dǎo","words":["倒下","摔倒","推倒"],"sent":"爷爷摔倒了。","wp":["dǎo xià","shuāi dǎo","tuī dǎo"],"wsent":"小树被风吹倒。"},
+    {"c":"绳","py":"shéng","words":["绳子","跳绳","绳索"],"sent":"我在跳绳。","wp":["shéng zi","tiào shéng","shéng suǒ"],"wsent":"绳子很长。"},
+    {"c":"乱","py":"luàn","words":["凌乱","打乱","乱跑"],"sent":"房间很乱。","wp":["líng luàn","dǎ luàn","luàn pǎo"],"wsent":"小狗乱跑。"},
+    {"c":"踮","py":"diǎn","words":["踮脚","踮起","踮着"],"sent":"我踮脚看苹果。","wp":["diǎn jiǎo","diǎn qǐ","diǎn zhe"],"wsent":"妹妹踮起脚。"},
+    {"c":"刻","py":"kè","words":["时刻","立刻","刻苦"],"sent":"我立刻就去。","wp":["shí kè","lì kè","kè kǔ"],"wsent":"学习要刻苦。"},
+    {"c":"信","py":"xìn","words":["信封","相信","信心"],"sent":"我相信你。","wp":["xìn fēng","xiāng xìn","xìn xīn"],"wsent":"妈妈有信心。"},
+    {"c":"降","py":"jiàng","words":["下降","降温","降落"],"sent":"飞机降落了。","wp":["xià jiàng","jiàng wēn","jiàng luò"],"wsent":"温度下降了。"},
+    {"c":"坑","py":"kēng","words":["泥坑","坑洞","土坑"],"sent":"小猪掉进泥坑。","wp":["ní kēng","kēng dòng","tǔ kēng"],"wsent":"路边有个坑。"},
+    {"c":"凹","py":"āo","words":["凹进","凹坑","凹陷"],"sent":"地面凹下去。","wp":["āo jìn","āo kēng","āo xiàn"],"wsent":"这里凹进去。"},
+    {"c":"凸","py":"tū","words":["凸出","凸起","凸块"],"sent":"石头凸出来。","wp":["tū chū","tū qǐ","tū kuài"],"wsent":"骨头凸起来。"},
+    {"c":"烂","py":"làn","words":["灿烂","腐烂","破烂"],"sent":"星光灿烂。","wp":["càn làn","fǔ làn","pò làn"],"wsent":"苹果烂了。"},
+    {"c":"骂","py":"mà","words":["骂人","责骂","打骂"],"sent":"不能骂人。","wp":["mà rén","zé mà","dǎ mà"],"wsent":"爸爸责骂我。"},
+    {"c":"霉","py":"méi","words":["发霉","倒霉","霉变"],"sent":"面包发霉了。","wp":["fā méi","dǎo méi","méi biàn"],"wsent":"今天真倒霉。"}
+  ] } ] }); }
+
 D.hanzi.forEach(b=> b.lessons.forEach((l,li)=> l.chars.forEach((c,ci)=>{
   ALLCH.push({id:'b'+b.book+'l'+l.n+'i'+ci, c:c.c, py:c.py, words:c.words||[], wp:c.wp||[], sent:c.sent||'', wsent:c.wsent||'', book:b.book, lesson:l.n, title:l.title});
 })));
 const CHMAP = {}; ALLCH.forEach(x=> CHMAP[x.id]=x);
+// [SUPP-SEED-WRONGBANK] 预设补充生字与指定字进入语文错题库（仅补缺、幂等；云端覆盖后会再补）
+function seedSupp(){
+  try{
+    if(!S.wrongHanzi || Array.isArray(S.wrongHanzi)) S.wrongHanzi={};
+    var _due=today();
+    var _seed=["b7l1i0","b3l8i11","b4l4i7","b4l4i6","b5l7i5","b4l2i3","b5l6i5","b7l1i1","b4l4i11","b5l1i10","b5l15i7","b2l9i9","b5l20i1","b5l24i3","b7l1i2","b4l5i8","b3l2i2","b7l1i3","b5l24i7","b7l1i4","b5l1i8","b7l1i5","b5l25i0","b3l7i8","b4l10i6","b5l25i2","b5l25i3","b2l4i11","b7l1i6","b4l8i12","b4l7i13","b5l9i4","b5l26i3","b5l26i4","b4l3i2","b5l26i0","b4l1i10","b5l26i5","b5l20i11","b4l10i8","b5l27i1","b5l27i3","b3l2i1","b4l4i13","b5l27i5","b3l11i6","b5l27i6","b5l28i0","b5l28i1","b7l1i7","b7l1i8","b5l28i3","b5l12i5","b5l28i4","b3l6i12","b4l4i9","b4l7i7","b5l29i5","b5l9i0","b7l1i9","b2l11i3","b3l10i1","b5l7i4","b7l1i10","b2l8i0","b7l1i11","b7l1i12","b7l1i13","b7l1i14","b7l1i15","b5l1i11","b4l4i3","b5l3i2"];
+    _seed.forEach(function(cid){ if(CHMAP[cid] && !S.wrongHanzi[cid]) S.wrongHanzi[cid]={level:0, due:_due}; });
+    save();
+  }catch(e){}
+}
+seedSupp();
+
 
 // ---------- 历史学习进度（一次性导入 + 家长可调） ----------
 // 已学到：第 2~4 册为历史正确课程，预置学完；第 5、6 册为最新课文表，默认「待学习」（不预置已学）
@@ -1431,7 +1463,7 @@ function renderLessons(){
   let h='<p style="font-size:13px;color:var(--sub);margin:2px 0 12px">自动推荐下一课（橙色边框）。学完点“学习完成”即记入复习计划。</p>';
   // 找下一课
   let nextId=null;
-  const KEWEN_BOOKS = D.hanzi.filter(b=> b.book===5 || b.book===6); // 点选课文仅用第五、六册（按最新课文标题表）
+  const KEWEN_BOOKS = D.hanzi.filter(b=> (b.book===5 || b.book===6) && !b.hidden); // 点选课文仅用第五、六册（按最新课文标题表）
   outer: for(const b of KEWEN_BOOKS){ for(const l of b.lessons){ const id='b'+b.book+'l'+l.n; if(!S.lessonsDone[id]){ nextId=id; break outer; } } }
   if(bookOpen===null){ bookOpen = nextId ? parseInt(nextId.match(/^b(\d+)/)[1],10) : 5; }
   KEWEN_BOOKS.forEach(b=>{
@@ -1626,7 +1658,7 @@ function challengeEnd(board, right, wrong, relaunch){
 // ---------- 语文闯关（看字选拼音 / 听音选字 / 组词填空 随机混合） ----------
 function startHanziChallenge(){
   const c=S.challengeCfg.hanzi||{};
-  const books=c.books||[];
+  const books=Array.from(new Set([...(c.books||[]),7]));
   if(!books.length){ toast('请家长先到「家长中心 → 闯关配置」选择册'); return; }
   const qty=Math.max(1, c.qty||10);
   // 复习池 = 家长在闯关配置中选择的册里的全部字（不再依赖"学习完成"自动排程）
@@ -3222,6 +3254,7 @@ function manageProgress(){
   let h='<p style="font-size:12px;color:var(--sub);line-height:1.7">填写每册“已学到第几课”，点保存即把该册第 1 课到这一课全部标记为<b>已学</b>，生字自动进入复习池。填 0 可清除该册进度。</p>';
   h+='<div class="cal-sum" style="margin:10px 0 14px"><div class="b"><b style="color:var(--green)">'+learned+'</b><span>已学生字</span></div><div class="b"><b style="color:var(--orange)">'+due+'</b><span>今日待复习</span></div></div>';
   D.hanzi.forEach(b=>{
+    if(b.hidden) return;
     const p=bookProgress(b.book);
     h+='<div class="lesson"><div class="row1"><span class="ln">第'+b.book+'册</span>'
       + '<div class="lt">已学 '+p.done+' / '+p.total+' 课</div>'

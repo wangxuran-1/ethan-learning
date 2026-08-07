@@ -1333,7 +1333,9 @@ function renderHome(){
   $('hToday').textContent = todayEarn;
   let h='<div class="section"><h3>📚 学习任务 <span class="tag">点进去学习</span></h3><div class="tasks-grid">';
   S.tasks.learning.forEach(tk=>{
-    const done=(S.doneDates[tk.id]||[]).includes(t);
+    const done = tk.sub==='phonics'
+      ? ((S.doneDates[tk.id]||[]).includes(t) || Object.keys(S.phonicsDone||{}).some(u=> S.phonicsDone[u]===t))
+      : (S.doneDates[tk.id]||[]).includes(t);
     let sub = tk.sub==='hanzi' ? '点选课文→学习中→完成' : tk.sub==='phonics' ? '点选Unit→学习中→完成' : tk.sub==='mathbook' ? '点选课程→学习中→完成' : '点进去开始今日练习';
     h+=`<div class="card ${done?'done':''}" data-task="${tk.id}"><div class="ic">${tk.ic}</div><div class="txt"><div class="t">${esc(tk.name)}</div><div class="d">${sub}</div></div><button class="bonusbtn" data-bonus="${tk.id}" title="家长加分">＋</button><div class="go">${done?'已完成 🏅':'去学习 →'}</div></div>`;
   });
@@ -2358,6 +2360,10 @@ function beginPhonicsLesson(uid){
     clearInterval(sessTimer);
     if(!S.phonicsDone) S.phonicsDone = {};
     S.phonicsDone[uid] = today();
+    // 同步勾掉首页「自然拼读」学习任务
+    const t=today();
+    const phArr=S.doneDates['phonics']||(S.doneDates['phonics']=[]);
+    if(!phArr.includes(t)) phArr.push(t);
     save();
     addPoints(2, '自然拼读 第'+book+'册 U'+unit+' 学习完成');
     toast('🎉 自然拼读学习完成 +2 ⭐');
@@ -3611,9 +3617,20 @@ const BONUS_REASONS=['奖励·三科闯关全完成','奖励·学习任务全勤
 function isBonusReason(r){ return BONUS_REASONS.indexOf(r)>=0; }
 function _learnDoneToday(t){
   const hanzi=(S.doneDates['hanzi']||[]).includes(t);
-  const ph=Object.keys(S.phonicsDone||{}).some(u=> S.phonicsDone[u]===t);
+  // 自然拼读兼容旧数据（S.phonicsDone）与新数据（doneDates['phonics']）
+  const ph=(S.doneDates['phonics']||[]).includes(t) || Object.keys(S.phonicsDone||{}).some(u=> S.phonicsDone[u]===t);
   const math=(S.doneDates['mathbook']||[]).includes(t);
-  return {hanzi:hanzi, ph:ph, math:math, any:hanzi||ph||math, all:hanzi&&ph&&math, count:(hanzi?1:0)+(ph?1:0)+(math?1:0)};
+  const coreAll=hanzi&&ph&&math;
+  // 清单行统计所有配置的学习任务（含 generic），不再只硬编码 3 科
+  const list=S.tasks.learning||[];
+  let count=0, total=list.length;
+  list.forEach(tk=>{
+    const done = tk.sub==='phonics'
+      ? ((S.doneDates[tk.id]||[]).includes(t) || Object.keys(S.phonicsDone||{}).some(u=> S.phonicsDone[u]===t))
+      : (S.doneDates[tk.id]||[]).includes(t);
+    if(done) count++;
+  });
+  return {hanzi:hanzi, ph:ph, math:math, any:count>0, all:total>0&&count===total, coreAll:coreAll, count:count, total:total};
 }
 function _chalDoneToday(t){
   const b=['hanzi','math','en'];
@@ -3629,9 +3646,9 @@ function scoreBonusStatus(t){
   const L=_learnDoneToday(t), C=_chalDoneToday(t), H=_habitDoneToday(t);
   return [
     {name:'三科闯关全完成', pts:5,  done:C.all,  desc:'把语文、数学、英语闯关都各玩一次'},
-    {name:'学习任务全勤',   pts:5,  done:L.all,  desc:'摩比爱识字、自然拼读、摩比爱数学 都各完成 1 课'},
+    {name:'学习任务全勤',   pts:5,  done:L.coreAll,  desc:'摩比爱识字、自然拼读、摩比爱数学 都各完成 1 课'},
     {name:'好习惯全勤',     pts:3,  done:H.all,  desc:'今天的好习惯全都打勾完成'},
-    {name:'全能宝宝',       pts:10, done:C.all&&L.all&&H.all, desc:'闯关三科 + 学习任务 + 好习惯 全部完成！'},
+    {name:'全能宝宝',       pts:10, done:C.all&&L.coreAll&&H.all, desc:'闯关三科 + 学习任务 + 好习惯 全部完成！'},
     {name:'每日三件套',     pts:5,  done:L.any&&H.any&&C.any, desc:'学习任务、好习惯、闯关 今天都至少完成 1 项'}
   ];
 }
@@ -3645,9 +3662,9 @@ function checkDailyBonuses(){
     const L=_learnDoneToday(t), C=_chalDoneToday(t), H=_habitDoneToday(t);
     const newly=[];
     if(C.all && give('奖励·三科闯关全完成',5))  newly.push('三科闯关全完成 +5');
-    if(L.all && give('奖励·学习任务全勤',5))    newly.push('学习任务全勤 +5');
+    if(L.coreAll && give('奖励·学习任务全勤',5))    newly.push('学习任务全勤 +5');
     if(H.all && give('奖励·好习惯全勤',3))      newly.push('好习惯全勤 +3');
-    if(C.all&&L.all&&H.all && give('奖励·全能宝宝',10)) newly.push('全能宝宝 +10');
+    if(C.all&&L.coreAll&&H.all && give('奖励·全能宝宝',10)) newly.push('全能宝宝 +10');
     if(L.any&&H.any&&C.any && give('奖励·每日三件套',5)) newly.push('每日三件套 +5');
     if(newly.length){
       save();
@@ -3686,7 +3703,7 @@ function buildScoreChecklistHTML(){
     '</div>';
   };
   let h='<div class="sc-list">';
-  h+=row('📚','学习任务','2', L.any, L.count+'/3 科');
+  h+=row('📚','学习任务','2', L.any, L.count+'/'+L.total+' 项');
   h+=row('✅','好习惯','1', H.any, H.total?(''+H.count+'/'+H.total):'');
   h+=row('🎮','闯关','3', C.any, C.done+'/3 科');
   h+='</div>';

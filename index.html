@@ -1844,10 +1844,11 @@ function startEnChallengeV2(){
     let type=['listen','pic','piczh','zh','listenzh'][Math.floor(Math.random()*5)];
     if((type==='pic'||type==='piczh') && !w.img) type=(type==='pic')?'listen':'zh';
     const picHead='<div class="qchar" style="font-size:72px">'+(w.img?'<img src="'+w.img+'" style="max-width:160px;max-height:160px;border-radius:14px">':(w.em||'📝'))+'</div>';
-    let hint, head, choices, answer, speak;
+    // ⚠️ 局部变量禁止命名为 speak（会遮蔽全局 speak 函数导致无限递归，BUG-001 曾复发），统一用 speakFn
+    let hint, head, choices, answer, speakFn;
     if(type==='listen'){
       const dist=shuffle(others.map(x=>x.en)).slice(0,3);
-      hint='🔊 听单词，选出你听到的英文'; choices=shuffle([w.en].concat(dist)); answer=w.en; speak=()=>speak(w.en,'en-US',0.6);
+      hint='🔊 听单词，选出你听到的英文'; choices=shuffle([w.en].concat(dist)); answer=w.en; speakFn=()=>speak(w.en,'en-US',0.6);
     } else if(type==='pic'){
       const dist=shuffle(others.map(x=>x.en)).slice(0,3);
       hint='🖼️ 看图片，选出对应的英文'; head=picHead; choices=shuffle([w.en].concat(dist)); answer=w.en;
@@ -1857,13 +1858,13 @@ function startEnChallengeV2(){
       hint='🔤 看图+英文，选出它的中文意思'; choices=shuffle([w.zh].concat(dist)); answer=w.zh;
     } else if(type==='listenzh'){
       const dist=shuffle(others.map(x=>x.zh)).slice(0,3);
-      hint='🔊 听单词，选出它的中文意思'; choices=shuffle([w.zh].concat(dist)); answer=w.zh; speak=()=>speak(w.en,'en-US',0.6);
+      hint='🔊 听单词，选出它的中文意思'; choices=shuffle([w.zh].concat(dist)); answer=w.zh; speakFn=()=>speak(w.en,'en-US',0.6);
     } else {
       head='<div class="qchar" style="font-size:40px">'+esc(w.zh)+'</div>';
       const dist=shuffle(others.map(x=>x.en)).slice(0,3);
       hint='🔤 看中文，选出对应的英文'; choices=shuffle([w.en].concat(dist)); answer=w.en;
     }
-    return {hint, head, choices, answer, speak};
+    return {hint, head, choices, answer, speak: speakFn};
   }
   function renderNav(){
     const nav=document.createElement('div'); nav.className='qnav';

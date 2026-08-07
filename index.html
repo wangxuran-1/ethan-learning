@@ -366,7 +366,6 @@ body{overflow:hidden}
   #app>.header,#home{max-width:100%;margin-left:0;margin-right:0}
   #home{padding-bottom:18px}
   .page{left:var(--sbw)}
-  .back{display:none}
   .addbtn{right:28px;bottom:28px}
   /* Pad 窄栏：tasks-grid 3 列 */
   .tasks-grid{grid-template-columns:repeat(3,1fr)}
@@ -961,6 +960,7 @@ try{ S = JSON.parse(localStorage.getItem(KEY)) || def(); }catch(e){ S = def(); }
   if(!S.challengeCfg.hanzi) S.challengeCfg.hanzi={books:[],qty:10};
   if(!S.challengeCfg.math) S.challengeCfg.math={types:[],qty:12};
   if(!S.challengeCfg.en) S.challengeCfg.en={books:['PU0'],qty:20};
+  if(!S.challengeProgress) S.challengeProgress = {};
   if(!S.lastBackup) S.lastBackup = null;
   if(S.pointsAtBackup===undefined) S.pointsAtBackup = 0;
   if(!S.backupRemindedOn) S.backupRemindedOn = null;
@@ -1019,6 +1019,48 @@ function rewardPts(r){ return r.pts!=null ? r.pts : (r.yuan||0)*5; }
 
 // ---------- 工具 ----------
 function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// ---------- 闯关进度「当日记忆」（续关 / 重新开始） ----------
+function speakFrom(info){ return info ? ()=>speak(info.t, info.l, info.r) : null; }
+function challengeFp(kind){
+  const c=S.challengeCfg[kind]||{};
+  if(kind==='hanzi') return 'h:'+(c.books||[]).join(',')+'|'+(c.qty||10);
+  if(kind==='math') return 'm:'+(c.types||[]).join(',')+'|'+(c.qty||12);
+  if(kind==='en') return 'e:'+(c.books||[]).join(',')+'|'+(c.qty||20);
+  return '';
+}
+function getResume(kind){
+  const p = S.challengeProgress && S.challengeProgress[kind];
+  if(!p) return null;
+  if(p.date !== today()) return null;            // 跨日（次日 24:00 后）作废
+  if(p.fp !== challengeFp(kind)) return null;    // 家长改了闯关配置 → 作废，直接开新一轮
+  if(p.answeredCount >= p.total) return null;    // 已做完（理论上不会存）
+  return p;
+}
+function clearChallengeProgress(kind){ if(S.challengeProgress && S.challengeProgress[kind]){ delete S.challengeProgress[kind]; save(); } }
+function askResume(kind, rec, ctl){
+  const n=rec.answeredCount+1;
+  const name={hanzi:'语文',math:'数学',en:'英语'}[kind]||'闯关';
+  const html='<div style="text-align:center">'
+    +'<div style="font-size:17px;font-weight:800;margin-bottom:6px">继续上次的'+name+'闯关？</div>'
+    +'<div style="font-size:13px;color:var(--sub);margin-bottom:16px">你上次做到了第 <b style="color:var(--blue)">'+rec.answeredCount+'</b> 题（共 '+rec.total+' 题）。</div>'
+    +'<button data-ok style="width:100%;padding:14px;border:none;border-radius:14px;background:var(--blue);color:#fff;font-size:16px;font-weight:800;margin-bottom:10px">接着做第 '+n+' 题 ▶</button>'
+    +'<button data-restart style="width:100%;padding:13px;border:2px solid var(--line);border-radius:14px;background:#fff;color:var(--sub);font-size:15px;font-weight:700">重新开始</button>'
+    +'</div>';
+  popBox(html, ()=>{
+    // 进入时已按 resume 定位到上次退出那道题，故"接着做"直接关闭弹窗即可继续
+    closePop();
+    if(ctl && ctl.resumeSpeak) ctl.resumeSpeak();
+    return true;
+  });
+  const rb=$('popBox').querySelector('[data-restart]');
+  if(rb) rb.onclick=()=>{
+    clearChallengeProgress(kind);
+    if(kind==='hanzi'){ startHanziChallenge(); openPage('pgHanzi'); }
+    else if(kind==='math'){ startMathChallenge(); openPage('pgMath'); }
+    else { startEnChallengeV2(); openPage('pgWords'); }
+    closePop();
+  };
+}
 function addDays(n){ const d=new Date(); d.setTime(d.getTime()+n*DAY); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function $(id){ return document.getElementById(id); }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
@@ -1706,11 +1748,12 @@ function challengeEnd(board, right, wrong, relaunch){
     const firstToday = !quizDoneToday(board);
     markQuizDone(board);
     if(firstToday) addPoints(3, '闯关·'+board);
+    clearChallengeProgress(board);
   }
   showGameEnd({hanzi:'语文闯关',math:'数学闯关',en:'英语闯关'}[board]||'闯关', right, wrong, board, relaunch);
 }
 // ---------- 语文闯关（看字选拼音 / 听音选字 / 组词填空 随机混合） ----------
-function startHanziChallenge(){
+function startHanziChallenge(resume){
   const c=S.challengeCfg.hanzi||{};
   const books=Array.from(new Set([...(c.books||[]),7]));
   if(!books.length){ toast('请家长先到「家长中心 → 闯关配置」选择册'); return; }
@@ -1729,11 +1772,25 @@ function startHanziChallenge(){
   const nNew=Math.max(0, qty-nWrong);
   const newPicks=newPool.slice(0, nNew);
   // 合并打乱；标记哪些来自错题本（用于答对时推进间隔）
-  const wrongFlag={}; wrongPicks.forEach(cid=> wrongFlag[cid]=true);
-  const picks=shuffle(wrongPicks.concat(newPicks));
-  const stat={idx:0,total:picks.length,right:0,wrong:0};
-  const history=[]; let answeredCount=0, cur=0;
   const body=$('hanziMenu');
+  let resumeMuted = !!resume;               // 续关进入时先静音，等用户点"接着做"再播放当前题
+  let picks, stat, history, answeredCount, cur, wrongFlag={};
+  if(resume && resume.kind==='hanzi' && resume.items){
+    picks=(resume.picks||[]).slice();
+    wrongFlag = resume.wrongFlag || {};
+    stat={idx:resume.stat.idx,total:resume.stat.total,right:resume.stat.right,wrong:resume.stat.wrong};
+    answeredCount=resume.answeredCount; cur=resume.cur;
+    history=resume.items.map(it=>{
+      if(!it) return {answered:false, spec:null, cid:undefined, isWrong:false, wrongChoices:[]};
+      return {answered:!!it.answered, ok:it.ok, userAns:it.userAns, wrongChoices:it.wrongChoices||[], cid:it.cid, isWrong:!!it.isWrong,
+        spec: it.spec ? {head:it.spec.head,hint:it.spec.hint,choices:it.spec.choices,answer:it.spec.answer,speakInfo:it.spec.speakInfo||null,speak:speakFrom(it.spec.speakInfo||null)} : null};
+    });
+  } else {
+    wrongPicks.forEach(cid=> wrongFlag[cid]=true);
+    picks=shuffle(wrongPicks.concat(newPicks));
+    stat={idx:0,total:picks.length,right:0,wrong:0};
+    history=[]; answeredCount=0; cur=0;
+  }
   function renderNav(){
     const nav=document.createElement('div'); nav.className='qnav';
     const prev=document.createElement('button'); prev.className='qnavbtn'; prev.textContent='← 上一题';
@@ -1749,56 +1806,95 @@ function startHanziChallenge(){
       const h=history[i];
       choiceQ(body, {hint:h.spec.hint, head:h.spec.head, choices:h.spec.choices, answer:h.spec.answer, stat, review:true, userAns:h.userAns, wrongChoices:h.wrongChoices, ok:h.ok, speak:h.spec.speak});
       renderNav();
-      if(h.spec.speak) setTimeout(()=>{ try{ h.spec.speak(); }catch(e){} }, 350);
+      if(!resumeMuted && h.spec.speak) setTimeout(()=>{ try{ h.spec.speak(); }catch(e){} }, 350);
       return;
     }
-    const cid=picks[i]; const ch=CHMAP[cid];
-    if(!ch){ viewQuestion(i+1); return; }
-    let type=HANZI_TYPES[Math.floor(Math.random()*HANZI_TYPES.length)];
-    let spec=hanziQSpec(type, ch);
-    let _guard=0;
-    while((type==='wordfill'||type==='wordpick') && spec.choices.length<4 && _guard<10){
-      const _alt=HANZI_TYPES.filter(t=>t!=='wordfill'&&t!=='wordpick');
-      type=_alt[Math.floor(Math.random()*_alt.length)];
+    let h=history[i];
+    let cid, ch, spec, isWrong;
+    if(h && h.spec){ // 续关：曾经查看过但当时未答（退出时停在这一题）
+      cid=h.cid; ch=CHMAP[cid]; spec=h.spec; isWrong=h.isWrong;
+    } else {
+      cid=picks[i]; const ch2=CHMAP[cid];
+      if(!ch2){ viewQuestion(i+1); return; }
+      ch=ch2;
+      let type=HANZI_TYPES[Math.floor(Math.random()*HANZI_TYPES.length)];
       spec=hanziQSpec(type, ch);
-      _guard++;
+      let _guard=0;
+      while((type==='wordfill'||type==='wordpick') && spec.choices.length<4 && _guard<10){
+        const _alt=HANZI_TYPES.filter(t=>t!=='wordfill'&&t!=='wordpick');
+        type=_alt[Math.floor(Math.random()*_alt.length)];
+        spec=hanziQSpec(type, ch);
+        _guard++;
+      }
+      const speakInfo=(type==='listen')?{t:ch.c,l:'zh-CN',r:0.7}:null;
+      isWrong=!!wrongFlag[cid];
+      h={answered:false, spec:{head:spec.head,hint:spec.hint,choices:spec.choices,answer:spec.answer,speakInfo,speak:speakFrom(speakInfo)}, cid, isWrong, userAns:null};
+      history[i]=h;
     }
-    const isWrong=!!wrongFlag[cid];
-    history[i]={answered:false, spec, cid, isWrong, userAns:null};
     choiceQ(body, {
       hint:spec.hint, head:spec.head, choices:spec.choices, answer:spec.answer, stat,
       capture:(label, isCorrect)=>{
-        history[i].userAns=label;
+        h.userAns=label;
         if(!isCorrect){
-          history[i].wrongChoices=history[i].wrongChoices||[];
-          if(!history[i].wrongChoices.includes(label)) history[i].wrongChoices.push(label);
+          h.wrongChoices=h.wrongChoices||[];
+          if(!h.wrongChoices.includes(label)) h.wrongChoices.push(label);
         }
       },
       onDone:(ok, displayedOk)=>{
-        history[i].answered=true; history[i].ok=(displayedOk!==undefined?displayedOk:ok);
+        h.answered=true; h.ok=(displayedOk!==undefined?displayedOk:ok);
         answeredCount=Math.max(answeredCount, i+1);
         updateWrongHanzi(cid, ok, isWrong);
+        persist();
         viewQuestion(answeredCount);
       },
       speak:spec.speak
     });
     renderNav();
-    if(spec.speak) setTimeout(()=>{ try{ spec.speak(); }catch(e){} }, 350);
+    if(!resumeMuted && spec.speak) setTimeout(()=>{ try{ spec.speak(); }catch(e){} }, 350);
   }
-  viewQuestion(0);
+  function persist(){
+    const items=[];
+    for(let i=0;i<stat.total;i++){
+      const it=history[i];
+      if(!it){ items.push(null); continue; }
+      items.push({answered:it.answered, ok:it.ok, userAns:it.userAns, wrongChoices:(it.wrongChoices&&it.wrongChoices.length)?it.wrongChoices:undefined, cid:it.cid, isWrong:it.isWrong,
+        spec: it.spec ? {head:it.spec.head,hint:it.spec.hint,choices:it.spec.choices,answer:it.spec.answer,speakInfo:it.spec.speakInfo||null} : undefined});
+    }
+    if(!S.challengeProgress) S.challengeProgress={};
+    S.challengeProgress.hanzi={ date:today(), fp:challengeFp('hanzi'), kind:'hanzi', total:stat.total, answeredCount, cur:answeredCount, stat:{idx:stat.idx,total:stat.total,right:stat.right,wrong:stat.wrong}, picks, wrongFlag, items };
+    save();
+  }
+  const controller={
+    resumeSpeak:()=>{
+      resumeMuted=false;
+      const h=history[cur];
+      if(h && h.spec && h.spec.speak) try{ h.spec.speak(); }catch(e){}
+    }
+  };
+  viewQuestion(cur);
+  return controller;
 }
 // ---------- 数学闯关（14 题型，数字键盘输入） ----------
-function startMathChallenge(){
+function startMathChallenge(resume){
   const c=S.challengeCfg.math||{};
   const types=c.types||[];
   if(!types.length){ toast('请家长先到「家长中心 → 闯关配置」选择题型'); return; }
   const qty=c.qty||12;
-  const qs=[];
+  let qs=[];
   for(let i=0;i<qty;i++){ qs.push(genMathByType(types[i%types.length])); }
   shuffle(qs);
-  const stat={idx:0,total:qs.length,right:0,wrong:0};
-  const history=[]; let answeredCount=0, cur=0;
   const body=$('mathBody');
+  let resumeMuted = !!resume;
+  let stat, history, answeredCount, cur;
+  if(resume && resume.kind==='math' && resume.items){
+    qs=(resume.qs||[]).slice();
+    stat={idx:resume.stat.idx,total:resume.stat.total,right:resume.stat.right,wrong:resume.stat.wrong};
+    answeredCount=resume.answeredCount; cur=resume.cur;
+    history=resume.items.map(it=> it ? {answered:!!it.answered, ok:it.ok, userAns:it.userAns, wrongChoices:it.wrongChoices||[], q:it.q, ans:it.ans} : {answered:false, q:undefined, ans:undefined, wrongChoices:[]});
+  } else {
+    stat={idx:0,total:qs.length,right:0,wrong:0};
+    history=[]; answeredCount=0; cur=0;
+  }
   function renderNav(){
     const nav=document.createElement('div'); nav.className='qnav';
     const prev=document.createElement('button'); prev.className='qnavbtn'; prev.textContent='← 上一题';
@@ -1817,34 +1913,63 @@ function startMathChallenge(){
       renderNav();
       return;
     }
-    const m=qs[i];
+    const m = (history[i] && history[i].q!==undefined) ? {q:history[i].q, ans:history[i].ans} : qs[i];
     history[i]={answered:false, q:m.q, ans:m.ans, userAns:null};
     mathQ(body,{hint:'🔢 算出答案，用键盘输入后按 ✓', q:m.q, ans:m.ans, stat,
       capture:(v, isCorrect)=>{ history[i].userAns=v; },
       onDone:(ok, displayedOk)=>{
         history[i].answered=true; history[i].ok=(displayedOk!==undefined?displayedOk:ok);
         answeredCount=Math.max(answeredCount, i+1);
+        persist();
         viewQuestion(answeredCount);
       }});
     renderNav();
   }
-  viewQuestion(0);
+  function persist(){
+    const items=[];
+    for(let i=0;i<stat.total;i++){
+      const it=history[i];
+      if(!it){ items.push(null); continue; }
+      items.push({answered:it.answered, ok:it.ok, userAns:it.userAns, wrongChoices:(it.wrongChoices&&it.wrongChoices.length)?it.wrongChoices:undefined, q:it.q, ans:it.ans});
+    }
+    if(!S.challengeProgress) S.challengeProgress={};
+    S.challengeProgress.math={ date:today(), fp:challengeFp('math'), kind:'math', total:stat.total, answeredCount, cur:answeredCount, stat:{idx:stat.idx,total:stat.total,right:stat.right,wrong:stat.wrong}, qs, items };
+    save();
+  }
+  const controller={
+    resumeSpeak:()=>{ resumeMuted=false; } // 数学无语音，仅解除静音以便后续流程一致
+  };
+  viewQuestion(cur);
+  return controller;
 }
 // ---------- 英语闯关（听音选词 / 看图选词 / 看图+词选中文 / 看中文选词 随机混合） ----------
-function startEnChallengeV2(){
+function startEnChallengeV2(resume){
   const words=enEnabledWords();
   if(!words.length){ toast('请家长先到「家长中心 → 闯关配置」启用单词书'); return; }
   const qty=(S.challengeCfg.en.qty)||20;
-  const pool=shuffle(words).slice(0, Math.max(1,qty));
-  const stat={idx:0,total:pool.length,right:0,wrong:0};
-  const history=[]; let answeredCount=0, cur=0;
+  let pool=shuffle(words).slice(0, Math.max(1,qty));
   const body=$('wordsBody');
+  let resumeMuted = !!resume;
+  let stat, history, answeredCount, cur;
+  if(resume && resume.kind==='en' && resume.items){
+    pool=(resume.pool||[]).slice();
+    stat={idx:resume.stat.idx,total:resume.stat.total,right:resume.stat.right,wrong:resume.stat.wrong};
+    answeredCount=resume.answeredCount; cur=resume.cur;
+    history=resume.items.map(it=>{
+      if(!it) return {answered:false, spec:null, wrongChoices:[]};
+      return {answered:!!it.answered, ok:it.ok, userAns:it.userAns, wrongChoices:it.wrongChoices||[],
+        spec: it.spec ? {head:it.spec.head,hint:it.spec.hint,choices:it.spec.choices,answer:it.spec.answer,speakInfo:it.spec.speakInfo||null,speak:speakFrom(it.spec.speakInfo||null)} : null};
+    });
+  } else {
+    stat={idx:0,total:pool.length,right:0,wrong:0};
+    history=[]; answeredCount=0; cur=0;
+  }
   function genEnSpec(w){
     const others=words.filter(x=>x.en!==w.en);
     let type=['listen','pic','piczh','zh','listenzh'][Math.floor(Math.random()*5)];
     if((type==='pic'||type==='piczh') && !w.img) type=(type==='pic')?'listen':'zh';
     const picHead='<div class="qchar" style="font-size:72px">'+(w.img?'<img src="'+w.img+'" style="max-width:160px;max-height:160px;border-radius:14px">':(w.em||'📝'))+'</div>';
-    // ⚠️ 局部变量禁止命名为 speak（会遮蔽全局 speak 函数导致无限递归，BUG-001 曾复发），统一用 speakFn
+    // BUG-001 复发防护：局部变量禁止命名为 speak（会遮蔽全局 speak 函数导致箭头函数自引用无限递归 → 静音）。统一用 speakFn，与 hanziQSpec 保持一致。
     let hint, head, choices, answer, speakFn;
     if(type==='listen'){
       const dist=shuffle(others.map(x=>x.en)).slice(0,3);
@@ -1864,7 +1989,7 @@ function startEnChallengeV2(){
       const dist=shuffle(others.map(x=>x.en)).slice(0,3);
       hint='🔤 看中文，选出对应的英文'; choices=shuffle([w.en].concat(dist)); answer=w.en;
     }
-    return {hint, head, choices, answer, speak: speakFn};
+    return {hint, head, choices, answer, speak:speakFn};
   }
   function renderNav(){
     const nav=document.createElement('div'); nav.className='qnav';
@@ -1881,30 +2006,58 @@ function startEnChallengeV2(){
       const h=history[i];
       choiceQ(body, {hint:h.spec.hint, head:h.spec.head, choices:h.spec.choices, answer:h.spec.answer, stat, review:true, userAns:h.userAns, wrongChoices:h.wrongChoices, ok:h.ok, speak:h.spec.speak});
       renderNav();
-      if(h.spec.speak) setTimeout(()=>{ try{ h.spec.speak(); }catch(e){} }, 350);
+      if(!resumeMuted && h.spec.speak) setTimeout(()=>{ try{ h.spec.speak(); }catch(e){} }, 350);
       return;
     }
-    const w=pool[i];
-    const spec=genEnSpec(w);
-    history[i]={answered:false, spec, userAns:null};
+    let h=history[i];
+    let w, spec;
+    if(h && h.spec){ spec=h.spec; }
+    else {
+      w=pool[i];
+      spec=genEnSpec(w);
+      const speakInfo = spec.speak ? {t:w.en,l:'en-US',r:0.6} : null;
+      h={answered:false, spec:{head:spec.head,hint:spec.hint,choices:spec.choices,answer:spec.answer,speakInfo,speak:speakFrom(speakInfo)}, wrongChoices:[]};
+      history[i]=h;
+    }
     choiceQ(body, {hint:spec.hint, head:spec.head, choices:spec.choices, answer:spec.answer, stat,
       capture:(label, isCorrect)=>{
-        history[i].userAns=label;
+        h.userAns=label;
         if(!isCorrect){
-          history[i].wrongChoices=history[i].wrongChoices||[];
-          if(!history[i].wrongChoices.includes(label)) history[i].wrongChoices.push(label);
+          h.wrongChoices=h.wrongChoices||[];
+          if(!h.wrongChoices.includes(label)) h.wrongChoices.push(label);
         }
       },
       onDone:(ok, displayedOk)=>{
-        history[i].answered=true; history[i].ok=(displayedOk!==undefined?displayedOk:ok);
+        h.answered=true; h.ok=(displayedOk!==undefined?displayedOk:ok);
         answeredCount=Math.max(answeredCount, i+1);
+        persist();
         viewQuestion(answeredCount);
       },
       speak:spec.speak});
     renderNav();
-    if(spec.speak) setTimeout(()=>{ try{ spec.speak(); }catch(e){} }, 350);
+    if(!resumeMuted && spec.speak) setTimeout(()=>{ try{ spec.speak(); }catch(e){} }, 350);
   }
-  viewQuestion(0);
+  function persist(){
+    const items=[];
+    for(let i=0;i<stat.total;i++){
+      const it=history[i];
+      if(!it){ items.push(null); continue; }
+      items.push({answered:it.answered, ok:it.ok, userAns:it.userAns, wrongChoices:(it.wrongChoices&&it.wrongChoices.length)?it.wrongChoices:undefined,
+        spec: it.spec ? {head:it.spec.head,hint:it.spec.hint,choices:it.spec.choices,answer:it.spec.answer,speakInfo:it.spec.speakInfo||null} : undefined});
+    }
+    if(!S.challengeProgress) S.challengeProgress={};
+    S.challengeProgress.en={ date:today(), fp:challengeFp('en'), kind:'en', total:stat.total, answeredCount, cur:answeredCount, stat:{idx:stat.idx,total:stat.total,right:stat.right,wrong:stat.wrong}, pool, items };
+    save();
+  }
+  const controller={
+    resumeSpeak:()=>{
+      resumeMuted=false;
+      const h=history[cur];
+      if(h && h.spec && h.spec.speak) try{ h.spec.speak(); }catch(e){}
+    }
+  };
+  viewQuestion(cur);
+  return controller;
 }
 // ---------- 家长中心：闯关配置面板 ----------
 function manageChallenge(){
@@ -2000,13 +2153,19 @@ function openReview(kind){
   if(!S.challengeCfg) S.challengeCfg={};
   if(kind==='hanzi'){
     if(!(S.challengeCfg.hanzi && S.challengeCfg.hanzi.books && S.challengeCfg.hanzi.books.length)){ toast('请家长先到「家长中心 → 闯关配置」选择册'); return; }
-    startHanziChallenge(); openPage('pgHanzi');
+    const r=getResume('hanzi');
+    const ctl=startHanziChallenge(r); openPage('pgHanzi');   // r=null→全新；r=记录→直接定位到上次退出那道题
+    if(r) askResume('hanzi', r, ctl);
   } else if(kind==='math'){
     if(!(S.challengeCfg.math && S.challengeCfg.math.types && S.challengeCfg.math.types.length)){ toast('请家长先到「家长中心 → 闯关配置」选择题型'); return; }
-    startMathChallenge(); openPage('pgMath');
+    const r=getResume('math');
+    const ctl=startMathChallenge(r); openPage('pgMath');
+    if(r) askResume('math', r, ctl);
   } else if(kind==='en'){
     if(!(S.challengeCfg.en && S.challengeCfg.en.books && S.challengeCfg.en.books.length && enEnabledWords().length)){ toast('请家长先到「家长中心 → 闯关配置」启用单词书'); return; }
-    startEnChallengeV2(); openPage('pgWords');
+    const r=getResume('en');
+    const ctl=startEnChallengeV2(r); openPage('pgWords');
+    if(r) askResume('en', r, ctl);
   }
 }
 

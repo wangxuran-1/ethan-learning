@@ -1004,10 +1004,10 @@ function undoPoints(n, reason, dateStr){
     if(i >= 0) rec.items.splice(i,1);
   }
 }
-// 累计获得（总积分）：遍历 pointLog 所有日期的 earn 累加（7月种子750 + 之后真实得分），不丢分
+// 累计净积分（总积分）：遍历 pointLog 所有日期的 (earn - spend) 累加，扣分会减少总分
 function totalEarned(){
   let s=0; const pl=S.pointLog||{};
-  for(const k in pl){ if(pl[k] && pl[k].earn) s += pl[k].earn; }
+  for(const k in pl){ if(pl[k]){ s += (pl[k].earn||0) - (pl[k].spend||0); } }
   return s;
 }
 // 已兑换积分：遍历 rewardLog 的 pts 累加
@@ -1371,7 +1371,8 @@ function renderHome(){
   $('hPoints').textContent = totalEarned();
   syncSidebar();
   const t = today();
-  const todayEarn = (S.pointLog[t] && S.pointLog[t].earn) ? S.pointLog[t].earn : 0;
+  const trec = S.pointLog[t] || {earn:0,spend:0};
+  const todayEarn = (trec.earn||0) - (trec.spend||0);
   $('hToday').textContent = todayEarn;
   let h='<div class="section"><h3>📚 学习任务 <span class="tag">点进去学习</span></h3><div class="tasks-grid">';
   S.tasks.learning.forEach(tk=>{
@@ -2960,7 +2961,8 @@ function renderCalendar(){
     const cls='cal-cell'+(k===t?' today':'')+(k===calSel?' sel':'')+(st.cnt===0?' none':'');
     h+='<div class="'+cls+'" data-day="'+k+'">';
     h+='<div class="dn">'+d+'</div>';
-    h+='<div class="pt'+(st.earn?'':' zero')+'">'+(future?'':(st.earn? '⭐'+st.earn : '·'))+'</div>';
+    const dnet=(st.earn||0)-(st.spend||0);
+    h+='<div class="pt'+(dnet?'':' zero')+'">'+(future?'':(dnet? '⭐'+dnet : '·'))+'</div>';
     h+='<div class="bar"><i style="width:'+Math.round(rate*100)+'%;background:'+barColor(rate)+'"></i></div>';
     h+='</div>';
   }
@@ -2972,7 +2974,7 @@ function renderCalendar(){
   for(let i=6;i>=0;i--){
     const dt=new Date(); dt.setHours(0,0,0,0); dt.setTime(dt.getTime()-i*DAY);
     const k=ds(dt.getFullYear(),dt.getMonth(),dt.getDate());
-    const v=dayStat(k).earn; maxv=Math.max(maxv,v);
+    const v=(dayStat(k).earn||0)-(dayStat(k).spend||0); maxv=Math.max(maxv,v);
     seven.push({k:k, d:dt.getDate(), v:v});
   }
   seven.forEach(x=>{
@@ -3010,9 +3012,10 @@ function buildDayDetailHTML(k){
   const [y,m,d]=k.split('-').map(Number);
   const wd=['周日','周一','周二','周三','周四','周五','周六'][new Date(y,m-1,d).getDay()];
   // 顶部只展示今日得分，不展示兑换/净分
-  let h='<div class="cal-detail"><h4><span>'+m+'月'+d+'日 '+wd+'</span><span style="color:var(--orange);font-size:15px">⭐ +'+st.earn+'</span></h4>';
+  const dayNet=(st.earn||0)-(st.spend||0);
+  let h='<div class="cal-detail"><h4><span>'+m+'月'+d+'日 '+wd+'</span><span style="color:var(--orange);font-size:15px">⭐ '+(dayNet>=0?'+':'')+dayNet+'</span></h4>';
   const BOARD={hanzi:'语文复习', math:'数学复习', en:'英语复习'};
-  const isReward=(x)=> isBonusReason(x.r) || (x.r||'').indexOf('家长加分')===0 || (x.r||'').indexOf('补录·额外加分')===0;
+  const isReward=(x)=> isBonusReason(x.r) || (x.r||'').indexOf('家长加分')===0 || (x.r||'').indexOf('家长扣分')===0 || (x.r||'').indexOf('补录·额外加分')===0;
   const learnNames=(S.tasks.learning||[]).map(t=>t.name);
   const habitNames=[].concat(S.tasks.lifeHabits||[],S.tasks.lifeSports||[]).map(t=>t.name);
   function catOf(x){
@@ -3065,7 +3068,7 @@ function buildDayDetailHTML(k){
   });
   // 🎁 家长奖励 / 额外加分（无完成状态，仅展示名称 + 加分）
   const rewardRows=[];
-  st.items.filter(x=> isReward(x)).forEach(x=>{ rewardRows.push('<div class="bonusrow">'+esc(x.r||'')+'　<b style="color:var(--orange)">+'+x.n+' ⭐</b></div>'); });
+  st.items.filter(x=> isReward(x)).forEach(x=>{ const neg=x.n<0; const col=neg?'#FF6B6B':'#3FA7FF'; const sgn=neg?'−':'+'; rewardRows.push('<div class="bonusrow">'+esc(x.r||'')+'　<b style="color:'+col+'">'+sgn+Math.abs(x.n)+' ⭐</b></div>'); });
   const anyBlock = learnRows.length || reviewRows.length || habitRows.length || rewardRows.length;
   if(!anyBlock){
     h+='<div class="empty" style="padding:14px 0">这天还没有记录哦 🦕</div>';
@@ -3078,7 +3081,7 @@ function buildDayDetailHTML(k){
   h+='</div>';
   return h;
 }
-function isRewardItem(x){ return isBonusReason(x.r) || (x.r||'').indexOf('家长加分')===0 || (x.r||'').indexOf('补录·额外加分')===0; }
+function isRewardItem(x){ return isBonusReason(x.r) || (x.r||'').indexOf('家长加分')===0 || (x.r||'').indexOf('家长扣分')===0 || (x.r||'').indexOf('补录·额外加分')===0; }
 let calEditItems=null, calEditDel=[];
 function openCalEdit(k){
   if(!k) return;
@@ -3095,8 +3098,9 @@ function renderCalEdit(k){
   let rows='';
   items.forEach((it,idx)=>{
     const reward=isRewardItem(it);
+    const isSub=(it.r||'').indexOf('家长扣分')===0;
     const valHtml = reward
-      ? '<input class="ce-in" type="number" min="1" max="99" value="'+it.n+'" data-i="'+idx+'">'
+      ? '<input class="ce-in" type="number" min="'+(isSub?-99:1)+'" max="'+(isSub?-1:1000)+'" value="'+it.n+'" data-i="'+idx+'" data-sub="'+(isSub?1:0)+'">'
       : '<span class="ce-val">+'+it.n+' ⭐</span><span class="ce-lock" title="任务分只能删除，不能改值">🔒</span>';
     rows += '<div class="ce-row '+(reward?'reward':'task')+'">'
       + '<span class="ce-r">'+esc(it.r)+'</span>'
@@ -3115,7 +3119,7 @@ function renderCalEdit(k){
   popBox(html, ()=>{ saveCalEdit(k); return false; });
   const box=$('popBox'); box.classList.add('bk');
   const xb=box.querySelector('[data-close]'); if(xb) xb.onclick=closePop;
-  box.querySelectorAll('.ce-in').forEach(inp=> inp.oninput=()=>{ const i=+inp.dataset.i; calEditItems[i].n=Math.max(1,Math.min(99,Number(inp.value)||0)); });
+  box.querySelectorAll('.ce-in').forEach(inp=> inp.oninput=()=>{ const i=+inp.dataset.i; if(inp.dataset.sub==='1'){ calEditItems[i].n=Math.min(-1,Math.max(-99,Number(inp.value)||0)); } else { calEditItems[i].n=Math.max(1,Math.min(99,Number(inp.value)||0)); } });
   box.querySelectorAll('[data-del]').forEach(b=> b.onclick=()=>{ const i=+b.dataset.del; const it=calEditItems[i]; if(it && !isRewardItem(it)) calEditDel.push(it.r); calEditItems.splice(i,1); renderCalEdit(k); });
   const c=box.querySelector('[data-cancel]'); if(c) c.onclick=()=> openCalDayDetail(k);
 }
@@ -3744,19 +3748,56 @@ function openTaskBonus(taskId){
   });
 }
 $('addScore').onclick=()=>{
-  let sel=0;
-  popBox('<button class="popx" data-close aria-label="关闭">✕</button><div style="font-weight:800;margin-bottom:6px">今天整体加分（家长）</div><div style="color:var(--sub);font-size:13px;margin-bottom:6px">给一整天的内容统一加分</div><div class="opts" id="bOpts2"><button data-b="5">+5</button><button data-b="10">+10</button><button data-b="20">+20</button><button data-b="30">+30</button></div><div style="margin-top:8px">自定义<input id="cv" type="number" min="1" max="99" style="width:70px;padding:6px;border:2px solid var(--line);border-radius:8px"></div><div class="opts" style="margin-top:10px"><button data-ok class="primary">确定</button></div>',
+  let sel=0, mode='add';
+  const COL={
+    add:{solid:'#3FA7FF', soft:'rgba(63,167,255,.14)', border:'rgba(63,167,255,.5)', ink:'#2E6FD8'},
+    sub:{solid:'#FF6B6B', soft:'rgba(255,107,107,.14)', border:'rgba(255,107,107,.5)', ink:'#E04646'}
+  };
+  popBox('<button class="popx" data-close aria-label="关闭">✕</button>'+
+    '<div style="font-weight:800;margin-bottom:6px">今天整体加减分（家长）</div>'+
+    '<div style="color:var(--sub);font-size:13px;margin-bottom:8px">给一整天的内容统一加 / 扣分</div>'+
+    '<div class="opts" id="modeSeg" style="margin-bottom:10px">'+
+      '<button data-mode="add">加分</button>'+
+      '<button data-mode="sub">扣分</button>'+
+    '</div>'+
+    '<div class="opts" id="bOpts2"><button data-b="5">+5</button><button data-b="10">+10</button><button data-b="20">+20</button><button data-b="30">+30</button></div>'+
+    '<div style="margin-top:8px;display:flex;align-items:center;gap:8px"><span style="font-size:13px;color:var(--sub);white-space:nowrap;flex:0 0 auto">自定义分数</span><input id="cv" type="number" min="1" max="1000" style="flex:1;min-width:0;padding:6px;border:2px solid var(--line);border-radius:8px"></div>'+
+    '<div style="margin-top:8px;display:flex;align-items:center;gap:8px"><span style="font-size:13px;color:var(--sub);white-space:nowrap;flex:0 0 auto">理由（选填）</span><input id="reason" type="text" placeholder="如：作业认真 / 没收拾玩具" style="flex:1;min-width:0;padding:6px;border:2px solid var(--line);border-radius:8px;font-size:13px"></div>'+
+    '<div class="opts" style="margin-top:10px"><button data-ok class="primary">确定</button></div>',
     ()=>{
       const cv=parseInt($('cv').value,10);
-      const v=(cv>0)?cv:sel;
-      if(v>0){ addPoints(v, '家长加分·整体'); save(); renderHome(); toast('+'+v+' ⭐'); closePop(); return true; }
-      toast('请先选择加分'); return false;
+      const mag=(cv>0)?cv:sel;
+      if(!mag){ toast('请先选择分值'); return false; }
+      const v=mag*(mode==='sub'?-1:1);
+      const rt=($('reason').value||'').trim();
+      const base=(mode==='sub')?'家长扣分':'家长加分·整体';
+      const reason=base+(rt?'·'+rt:'');
+      addPoints(v, reason); save(); renderHome();
+      toast((v>0?'+':'−')+mag+' ⭐'); closePop(); return true;
     });
-  const xb=$('popBox').querySelector('[data-close]'); if(xb) xb.onclick=closePop;
-  $('popBox').querySelectorAll('[data-b]').forEach(b=> b.onclick=()=>{
-    sel=parseInt(b.dataset.b,10);
-    $('bOpts2').querySelectorAll('button').forEach(x=> x.classList.remove('sel'));
+  const box=$('popBox');
+  const xb=box.querySelector('[data-close]'); if(xb) xb.onclick=closePop;
+  const segBtns=box.querySelectorAll('[data-mode]');
+  const presetBtns=box.querySelectorAll('[data-b]');
+  const applyMode=()=>{
+    const c=COL[mode];
+    segBtns.forEach(x=>{ const on=x.dataset.mode===mode; const self=COL[x.dataset.mode]; x.style.background=on?self.solid:self.soft; x.style.color=on?'#fff':self.ink; x.style.borderColor=on?self.solid:self.border; x.style.borderWidth='1.5px'; });
+    const ok=box.querySelector('[data-ok]'); if(ok){ ok.style.background='#3FA7FF'; ok.style.borderColor='#3FA7FF'; ok.style.color='#fff'; }
+    presetBtns.forEach(p=>{ const on=(+p.dataset.b)===sel; p.style.background=on?c.solid:c.soft; p.style.color=on?'#fff':c.ink; p.style.borderColor=on?c.solid:c.border; p.style.borderWidth='1.5px'; });
+  };
+  applyMode();
+  segBtns.forEach(b=> b.onclick=()=>{
+    mode=b.dataset.mode;
+    segBtns.forEach(x=> x.classList.remove('sel'));
     b.classList.add('sel');
+    presetBtns.forEach(p=>{ p.textContent=(mode==='sub'?'−':'+')+p.dataset.b; });
+    applyMode();
+  });
+  presetBtns.forEach(b=> b.onclick=()=>{
+    sel=parseInt(b.dataset.b,10);
+    presetBtns.forEach(x=> x.classList.remove('sel'));
+    b.classList.add('sel');
+    applyMode();
   });
 };
 
